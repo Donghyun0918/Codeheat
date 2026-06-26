@@ -6,8 +6,8 @@
 
 ## 전체 파이프라인
 
-1. **정적 분석** (현재 구현됨) — 복잡도 + TODO/FIXME + 나이
-2. 오너십 분석 — 복잡도 급증 시점 기여자 매칭
+1. **정적 분석** (구현됨) — 복잡도 + TODO/FIXME + 나이
+2. **오너십 분석** (구현됨) — 복잡도 급증 시점 기여자 매칭
 3. LLM 인사이트 — 숫자/메타데이터만으로 우선순위·질문 대상 제안
 4. 출력 레이어 — 대시보드 / PR 봇 / VS Code 확장
 
@@ -39,6 +39,23 @@ codeheat scan <repo_path> --no-todo-age
 ```bash
 python -m codeheat.cli scan <repo_path>
 ```
+
+### 오너십 분석 (`own`)
+
+파일별로 "복잡도가 급증한 시점에 커밋한 사람"에게 가중치를 줘서 도메인 지식 점수가 높은 기여자를 뽑는다. blame이 아니라 매칭이다.
+
+```bash
+# 1단계 리포트의 파일들만 분석 (복잡도 우선순위 그대로 이어받음)
+codeheat own <repo_path> --from-report smell_report.json
+
+# git 추적 파일 전체 (--from-report 없이), 상위 N명, 파일 수 상한
+codeheat own <repo_path> --top 2 --limit 30
+
+# 복잡도 델타 계산 생략, churn(변경 라인)만으로 가중 (속도 우선)
+codeheat own <repo_path> --churn-only
+```
+
+점수 = Σ(최근성 가중치 × 변화량 가중치). 최근성은 반감기 1년으로 감쇠하고, 변화량은 그 커밋이 끌어올린 복잡도 델타(불가 시 churn 폴백)로 잰다.
 
 ### 출력 (`smell_report.json`)
 

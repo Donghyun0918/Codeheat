@@ -56,3 +56,41 @@ class FileSmellReport:
             "duplication_ratio": self.duplication_ratio,
             "oldest_todo_days": self.oldest_todo_days,
         }
+
+
+@dataclass
+class ContributorScore:
+    """한 파일에 대한 기여자 한 명의 '도메인 지식 점수'."""
+
+    name: str
+    score: float  # Σ(최근성 가중치 × 변화량 가중치)
+    commit_count: int
+    last_commit_days: Optional[int] = None  # 마지막 커밋 이후 경과일
+
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "score": self.score,
+            "commit_count": self.commit_count,
+            "last_commit_days": self.last_commit_days,
+        }
+
+
+@dataclass
+class FileOwnershipReport:
+    """파일 한 개에 대한 오너십 분석 결과.
+
+    blame(누가 쌌나)이 아니라 매칭(누가 해결할 수 있나)을 위한 점수다.
+    복잡도가 급증한 시점에 커밋한 사람일수록 점수가 높다.
+    """
+
+    file: str
+    total_commits: int
+    top_contributors: list[ContributorScore] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return {
+            "file": self.file,
+            "total_commits": self.total_commits,
+            "top_contributors": [c.to_dict() for c in self.top_contributors],
+        }
