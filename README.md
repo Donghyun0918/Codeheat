@@ -1,0 +1,75 @@
+# CodeHeat 🔥
+
+코드 복잡도와 git 히스토리를 분석해서 **"어떤 파일을 먼저 리팩토링해야 하고, 누구에게 물어보면 좋을지"** 를 알려주는 오픈소스 CLI 툴.
+
+핵심 철학: *"누가 이 코드를 쌌나(blame)"* 가 아니라 *"누가 이 코드를 가장 잘 해결할 수 있나(매칭)"*.
+
+## 전체 파이프라인
+
+1. **정적 분석** (현재 구현됨) — 복잡도 + TODO/FIXME + 나이
+2. 오너십 분석 — 복잡도 급증 시점 기여자 매칭
+3. LLM 인사이트 — 숫자/메타데이터만으로 우선순위·질문 대상 제안
+4. 출력 레이어 — 대시보드 / PR 봇 / VS Code 확장
+
+> ⚠️ LLM 레이어에는 **코드 본문을 절대 넘기지 않고 숫자/메타데이터만** 전달한다. 1단계 JSON 출력도 이를 염두에 둔 구조다.
+
+## 설치
+
+```bash
+pip install -e .
+```
+
+`lizard`(다언어 복잡도 분석)에 의존하며, TODO 나이 계산에는 `git`이 필요하다.
+
+## 사용법
+
+```bash
+# 기본 스캔 (복잡도 + TODO + TODO 나이)
+codeheat scan <repo_path>
+
+# 출력 경로 지정
+codeheat scan <repo_path> --output report.json
+
+# git log 기반 TODO 나이 계산 생략 (대규모 레포에서 속도 우선)
+codeheat scan <repo_path> --no-todo-age
+```
+
+모듈로 직접 실행도 가능:
+
+```bash
+python -m codeheat.cli scan <repo_path>
+```
+
+### 출력 (`smell_report.json`)
+
+복잡도(파일 내 최대 CCN) 내림차순 정렬:
+
+```json
+{
+  "repo_path": ".",
+  "file_count": 3,
+  "files": [
+    {
+      "file": "codeheat/static_scan.py",
+      "complexity": 6,
+      "avg_complexity": 2.5,
+      "function_count": 7,
+      "loc": 90,
+      "todos": [{ "line": 42, "text": "TODO: ...", "age_days": 3 }],
+      "duplication_ratio": 0.0,
+      "oldest_todo_days": 3
+    }
+  ]
+}
+```
+
+## 알려진 한계 (1단계)
+
+- **TODO 탐지가 정규식 기반**이라 docstring/주석에 설명용으로 쓴 "TODO" 단어도 잡힐 수 있다. (단어 경계 `\b`로 변수명 오탐은 제거했지만 의미 판별은 못 함)
+- **`duplication_ratio`는 미구현** (기본값 0.0). 2단계에서 jscpd 등 연동 예정.
+- **`git log -S`(pickaxe)는 TODO 텍스트 앞 40자만 사용**한다. 문구가 너무 일반적이면 오매칭 가능. git 미설치/타임아웃/미추적 파일이면 `age_days`는 `null`.
+- `exclude`는 디렉토리 단위(node_modules/.git/venv/.venv)만 고정 제외.
+
+## 라이선스
+
+MIT

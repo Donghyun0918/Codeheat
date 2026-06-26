@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codeheat"
+version = "0.1.0"
+description = "코드 복잡도 + git 히스토리로 리팩토링 우선순위와 도메인 지식 보유자를 찾는 CLI 툴"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "lizard>=1.17",
+]
+
+[project.scripts]
+codeheat = "codeheat.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["codeheat*"]
