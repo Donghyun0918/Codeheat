@@ -94,3 +94,27 @@ class FileOwnershipReport:
             "total_commits": self.total_commits,
             "top_contributors": [c.to_dict() for c in self.top_contributors],
         }
+
+
+@dataclass
+class RefactorInsight:
+    """3단계 LLM이 파일 한 개에 대해 내놓은 리팩토링 가이드.
+
+    핵심: "누가 쌌나"가 아니라 "누구에게 무엇을 물어보면 풀리나".
+    LLM에는 숫자/메타데이터만 넘기므로 이 구조에도 코드 본문은 없다.
+    """
+
+    file: str
+    risk: str  # "high" | "medium" | "low"
+    reason: str  # 왜 우선순위가 높은지 (복잡도/TODO 나이/오너 부재 근거)
+    ask_who: str  # 도메인 지식 보유자(오너십 점수 기반)
+    ask_what: str  # 그 사람에게 물어볼 구체적 질문
+
+    def to_dict(self) -> dict:
+        return {
+            "file": self.file,
+            "risk": self.risk,
+            "reason": self.reason,
+            "ask_who": self.ask_who,
+            "ask_what": self.ask_what,
+        }

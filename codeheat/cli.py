@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 
+from .insights import generate_insights
 from .ownership import build_ownership_reports, list_tracked_files
 from .static_scan import build_smell_reports
 
@@ -88,6 +89,42 @@ def _cmd_own(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_insights(args: argparse.Namespace) -> int:
+    try:
+        result = generate_insights(
+            smell_path=args.smell_report,
+            ownership_path=args.ownership_report,
+            backend=args.backend,
+            model=args.model,
+            top_k=args.top_k,
+            ollama_host=args.ollama_host,
+            dry_run=args.dry_run,
+        )
+    except (RuntimeError, ValueError) as e:
+        print(f"인사이트 생성 실패: {e}")
+        return 1
+    except FileNotFoundError as e:
+        print(f"입력 리포트를 찾을 수 없습니다: {e}")
+        return 1
+
+    if args.dry_run:
+        print("[dry-run] LLM에 넘어갈 프롬프트:\n")
+        print(result["prompt"])
+        return 0
+
+    with open(args.output, "w", encoding="utf-8") as fh:
+        json.dump(result, fh, indent=2, ensure_ascii=False)
+
+    print(f"백엔드: {result['backend']} (model={result['model']})")
+    if result.get("summary"):
+        print(f"요약: {result['summary']}")
+    for ins in result["insights"][:5]:
+        print(f"  [{ins['risk']}] {ins['file']} → {ins['ask_who']}")
+        print(f"        ↳ {ins['ask_what']}")
+    print(f"리포트 저장: {args.output}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="codeheat",
@@ -141,6 +178,53 @@ def build_parser() -> argparse.ArgumentParser:
         help="복잡도 델타 계산 생략, churn(변경 라인)만으로 가중 (속도 우선)",
     )
     own.set_defaults(func=_cmd_own)
+
+    ins = sub.add_parser(
+        "insights",
+        help="3단계 LLM 인사이트(리팩토링 우선순위 + 누구에게 물어볼지) 생성",
+    )
+    ins.add_argument(
+        "smell_report",
+        help="1단계 smell_report.json 경로 (복잡도/TODO)",
+    )
+    ins.add_argument(
+        "--ownership-report",
+        default=None,
+        help="2단계 ownership_report.json 경로 (있으면 오너 매칭에 활용)",
+    )
+    ins.add_argument(
+        "--backend",
+        choices=["ollama", "anthropic"],
+        default="ollama",
+        help="LLM 백엔드 (기본: ollama, 무료 로컬)",
+    )
+    ins.add_argument(
+        "--model",
+        default=None,
+        help="모델명 (미지정 시 백엔드별 기본값: ollama=llama3.1, anthropic=claude-opus-4-8)",
+    )
+    ins.add_argument(
+        "--top-k",
+        type=int,
+        default=10,
+        help="LLM에 넘길 상위 파일 수 (기본: 10)",
+    )
+    ins.add_argument(
+        "--ollama-host",
+        default="http://localhost:11434",
+        help="Ollama 서버 주소 (기본: http://localhost:11434)",
+    )
+    ins.add_argument(
+        "--output",
+        default="insights_report.json",
+        help="결과 JSON 출력 경로 (기본: insights_report.json)",
+    )
+    ins.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="LLM 호출 없이 조립된 프롬프트만 출력 (키/네트워크 불필요)",
+    )
+    ins.set_defaults(func=_cmd_insights)
     return parser
 
 

@@ -13,6 +13,10 @@ dependencies = [
     "lizard>=1.17",
 ]
 
+[project.optional-dependencies]
+# 3단계 anthropic 백엔드용. ollama 백엔드는 stdlib만 쓰므로 추가 설치 불필요.
+llm = ["anthropic>=0.40"]
+
 [project.scripts]
 codeheat = "codeheat.cli:main"
 

@@ -8,7 +8,7 @@
 
 1. **정적 분석** (구현됨) — 복잡도 + TODO/FIXME + 나이
 2. **오너십 분석** (구현됨) — 복잡도 급증 시점 기여자 매칭
-3. LLM 인사이트 — 숫자/메타데이터만으로 우선순위·질문 대상 제안
+3. **LLM 인사이트** (구현됨) — 숫자/메타데이터만으로 우선순위·질문 대상 제안
 4. 출력 레이어 — 대시보드 / PR 봇 / VS Code 확장
 
 > ⚠️ LLM 레이어에는 **코드 본문을 절대 넘기지 않고 숫자/메타데이터만** 전달한다. 1단계 JSON 출력도 이를 염두에 둔 구조다.
@@ -56,6 +56,26 @@ codeheat own <repo_path> --churn-only
 ```
 
 점수 = Σ(최근성 가중치 × 변화량 가중치). 최근성은 반감기 1년으로 감쇠하고, 변화량은 그 커밋이 끌어올린 복잡도 델타(불가 시 churn 폴백)로 잰다.
+
+### LLM 인사이트 (`insights`)
+
+1+2단계 JSON을 묶어 LLM에 넘기고 리팩토링 우선순위와 "누구에게 무엇을 물어볼지"를 받는다. **코드 본문은 절대 안 넘기고 숫자/메타데이터만** 전달한다.
+
+```bash
+# 무료 로컬 백엔드 (Ollama). 먼저 `ollama pull llama3.1` 필요
+codeheat insights smell_report.json --ownership-report ownership_report.json
+
+# 모델/상위 파일 수/서버 주소 지정
+codeheat insights smell_report.json --backend ollama --model llama3.1:8b --top-k 10
+
+# Anthropic API 백엔드 (pip install codeheat[llm], ANTHROPIC_API_KEY 필요)
+codeheat insights smell_report.json --backend anthropic
+
+# LLM 호출 없이 넘어갈 프롬프트만 확인 (키/네트워크 불필요)
+codeheat insights smell_report.json --dry-run
+```
+
+`ollama` 백엔드는 stdlib만 쓰므로 추가 설치가 없고, `anthropic` 백엔드는 `claude-opus-4-8` + 구조화 출력으로 스키마를 엄격 강제한다. 출력은 `insights_report.json`(파일별 risk/reason/ask_who/ask_what + 전체 summary).
 
 ### 출력 (`smell_report.json`)
 

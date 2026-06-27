@@ -28,7 +28,7 @@ codeheat/
 │   ├── static_scan.py     # 완료: 복잡도 + TODO 분석
 │   ├── cli.py             # 완료: `codeheat scan|own <path>` 진입점
 │   ├── ownership.py       # 완료: 2단계 오너십 분석
-│   └── insights.py        # 미작성 (3단계, LLM)
+│   └── insights.py        # 완료: 3단계 LLM 인사이트
 ├── pyproject.toml         # 완료
 └── README.md              # 완료
 ```
@@ -79,12 +79,24 @@ python -m codeheat.cli scan <repo_path> --no-todo-age   # git log 생략(속도)
 
 ---
 
-## 다음 할 일 (우선순위 순)
+## 완료된 것 — 3단계 (LLM 인사이트 `insights.py`)
 
-### 3단계 — LLM 인사이트 (`insights.py`)
-- 입력: 1+2단계 JSON (숫자/메타데이터만, **코드 본문 절대 금지**)
-- 출력: 리팩토링 우선순위 + "누구에게 무엇을 물어볼지" 가이드
-- Ollama(무료) 또는 API 선택 가능하게
+목표 달성: 1+2단계 JSON을 묶어 LLM에 넘기고 리팩토링 우선순위 + "누구에게 무엇을 물어볼지"를 받는다.
+- `load_and_merge()`: smell_report(복잡도순) + ownership_report를 파일 기준 병합. 복잡도 우선순위 순서 보존. 파일명 basename 폴백 매칭.
+- `build_user_prompt()`: 병합 메타데이터만 직렬화. **코드 본문 절대 미포함** — 모델 `to_dict`가 메타데이터만 담는 구조라 자연히 보장됨.
+- 백엔드 2종 (HANDOFF의 "Ollama 또는 API"):
+  - `ollama`: 로컬·무료. stdlib urllib만 사용(추가 의존성 0). `format:"json"` 모드.
+  - `anthropic`: 공식 SDK. `claude-opus-4-8` + adaptive thinking + `output_config.format`(json_schema)로 스키마 엄격 강제. `pip install codeheat[llm]` 필요.
+- CLI: `codeheat insights smell_report.json [--ownership-report ...] [--backend ollama|anthropic] [--model ...] [--top-k 10] [--dry-run]`
+- 출력: `insights_report.json` (파일별 risk/reason/ask_who/ask_what + summary)
+- 동작 확인: 이 레포에서 `scan → own → insights`(ollama llama3.1:8b 실호출 + `--dry-run`) 검증 완료
+
+### 작업 중 발견/해결한 이슈 (반복 방지용 메모)
+1. Ollama `format:"json"`은 **유효 JSON만 강제하고 스키마는 강제 안 함** — 8b 모델이 risk를 숫자로, summary를 객체로 주기도 함. `_normalize_risk()` + summary 문자열 강제로 방어. anthropic 백엔드는 `output_config.format`로 스키마까지 엄격 강제되니 정규화 불필요(하지만 동일 코드 경로라 무해).
+2. `claude-api` 스킬 기준 opus-4-8은 `budget_tokens` 금지(400). `thinking={"type":"adaptive"}` 사용.
+3. anthropic SDK는 지연 import(`_generate_anthropic` 내부) — ollama 경로만 쓰면 anthropic 미설치여도 패키지 동작.
+
+## 다음 할 일 (우선순위 순)
 
 ### 4단계 — 출력 레이어
 - 4-1: Next.js + D3 트리맵 대시보드
@@ -96,4 +108,4 @@ python -m codeheat.cli scan <repo_path> --no-todo-age   # git log 생략(속도)
 ## 클로드 코드에서 시작하는 법
 1. 이 `codeheat/` 폴더를 작업 디렉토리로 열기
 2. `pip install -e .` 로 설치
-3. 다음 작업은 `insights.py` 작성부터 (3단계, LLM 레이어)
+3. 다음 작업은 4단계 출력 레이어(대시보드/PR 봇)부터. 1~3단계는 모두 구현·검증 완료.
