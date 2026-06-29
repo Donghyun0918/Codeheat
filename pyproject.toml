@@ -19,9 +19,13 @@ dependencies = [
 [project.optional-dependencies]
 # 3단계 anthropic 백엔드용. ollama 백엔드는 stdlib만 쓰므로 추가 설치 불필요.
 llm = ["anthropic>=0.40"]
+dev = ["pytest>=8"]
 
 [project.scripts]
 codeheat = "codeheat.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["codeheat*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
