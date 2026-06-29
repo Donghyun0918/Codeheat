@@ -11,6 +11,9 @@ requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = [
     "lizard>=1.17",
+    # 진짜 주석만 골라 TODO를 탐지하기 위한 다언어 토크나이저.
+    # 없어도 동작하나(라인-앵커 폴백), 문자열 리터럴 속 가짜 주석을 거르려면 필요.
+    "pygments>=2.0",
 ]
 
 [project.optional-dependencies]

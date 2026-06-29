@@ -7,6 +7,26 @@
 
 ---
 
+## 현재 상태 요약 (2026-06-28 기준)
+
+### 커밋된 것 (git 반영 완료, origin/master 푸시됨)
+- 1단계 정적 분석(`static_scan.py`) · 2단계 오너십(`ownership.py`) · 3단계 LLM 인사이트(`insights.py`)
+- 최근 커밋: `f0964e2 feat: CodeHeat 3단계 LLM 인사이트 레이어 구현`
+
+### 미커밋 작업 (working tree, 아직 commit 안 함)
+사용자 지시로 커밋 보류 중. 다음 두 묶음으로 나눠 커밋하면 깔끔함:
+
+1. **TODO 탐지 정밀화** — `codeheat/static_scan.py`, `pyproject.toml`(pygments 의존성), `README.md`, `HANDOFF.md`
+   - 정규식 라인 스캔 → **Pygments 토큰화로 진짜 주석만** + 마커 앵커 규칙. 산문/식별자/정규식정의/코드문장/문자열 리터럴 속 가짜 주석(`s = "# TODO"`)까지 전부 배제.
+   - 폴백(Pygments 없음/미지원 확장자)도 `_mask_strings`로 한 줄 문자열 마스킹. 셀프 스캔 0 오탐.
+2. **테스트 스위트 신설** — `tests/`(4파일, 36개 통과), `pyproject.toml`(pytest 설정 + `dev` extra)
+   - models / static_scan / ownership / insights 커버. git·LLM 호출은 monkeypatch로 오프라인 검증.
+   - 핵심 불변식 회귀 방지: insights 프롬프트에 코드 본문 미유출, TODO 문자열/산문/코드 음성 케이스.
+
+> 검증: `pip install -e .[dev]` 후 `pytest` → 36 passed. `python -m codeheat.cli scan|own|insights` 동작 확인.
+
+---
+
 ## 기술 스택
 - 언어: Python 3.10+
 - 복잡도 분석: `lizard` (다언어 지원, 무료)
@@ -51,10 +71,14 @@ python -m codeheat.cli scan <repo_path> --no-todo-age   # git log 생략(속도)
 
 ### 작업 중 발견/해결한 이슈 (반복 방지용 메모)
 1. `lizard.analyze()`의 인자명은 `exclude_pattern` (문서에 종종 나오는 `exclude_pattern_list` 아님)
-2. TODO 정규식은 반드시 단어 경계(`\b`) 필요 — 안 그러면 `todos`, `TODO_PATTERN` 같은 변수명까지 오탐
+2. TODO 정규식: 단어 경계(`\b`)만으론 부족. docstring 산문/정규식 정의/인자명/코드 문장까지 오탐됨. **주석 시작 토큰 뒤** 또는 **라인 시작 `TODO:`(콜론 필수)** 앵커를 둬야 정밀해짐. 라인-시작 분기에 콜론을 안 걸면 `todo.age = ...` 같은 코드 문장이 오탐됨(루프 변수). 검증은 `tests/test_static_scan.py`의 prose/code 음성 케이스 참고.
 
-### 알려진 한계 (1단계 기준)
-- TODO 탐지가 정규식 기반이라 docstring/주석에 설명용으로 쓴 "TODO" 단어도 잡힐 수 있음 (실코드선 드물어 MVP는 무시)
+### TODO 탐지 (1단계) — 토큰 기반으로 정밀화 완료
+- Pygments로 토큰화 → Comment 토큰만 추출 → 그 안에서 TODO_PATTERN(주석시작 직후 마커 + `\b`)로 확인.
+- 산문/식별자/정규식정의/코드문장은 물론 **문자열 리터럴 속 가짜 주석(`s = "# TODO"`)까지 배제**. 다언어 대응(.py/.js/...).
+- Pygments 미설치·렉서 미존재 시 라인-앵커 정규식 폴백(`_iter_comment_lines`). 폴백도 `_mask_strings`로 한 줄짜리 문자열 리터럴을 마스킹해 가짜 주석을 거름. 잔여 한계는 폴백 경로의 *여러 줄* 문자열뿐.
+- `_iter_comment_lines`는 (라인번호, 매칭용텍스트, 표시용텍스트) 3-튜플을 산출. 폴백에선 매칭=마스킹본, 표시=원본 라인이라 리포트 텍스트가 깨지지 않음.
+- 셀프 스캔 0 오탐 확인. 검증: `tests/test_static_scan.py` (문자열/산문/코드 음성 + 주석/다언어/폴백+마스킹/pygments미설치 양성, `_mask_strings` 단위).
 - `duplication_ratio` 미구현 (2차 jscpd 예정)
 - `git log -S`는 TODO 텍스트 앞 40자만 사용 — 너무 일반적 문구면 오매칭 가능
 
