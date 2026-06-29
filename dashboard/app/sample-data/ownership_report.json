@@ -1,0 +1,169 @@
+{
+  "repo_path": ".",
+  "weighting": "complexity_delta",
+  "file_count": 12,
+  "files": [
+    {
+      "file": "codeheat/ownership.py",
+      "total_commits": 2,
+      "top_contributors": [
+        {
+          "name": "Kimdonghyunn0918",
+          "score": 13.9261,
+          "commit_count": 2,
+          "last_commit_days": 0
+        }
+      ]
+    },
+    {
+      "file": "codeheat/ci.py",
+      "total_commits": 1,
+      "top_contributors": [
+        {
+          "name": "Kimdonghyunn0918",
+          "score": 12.0,
+          "commit_count": 1,
+          "last_commit_days": 0
+        }
+      ]
+    },
+    {
+      "file": "codeheat/insights.py",
+      "total_commits": 1,
+      "top_contributors": [
+        {
+          "name": "Kimdonghyunn0918",
+          "score": 9.9621,
+          "commit_count": 1,
+          "last_commit_days": 2
+        }
+      ]
+    },
+    {
+      "file": "codeheat/cli.py",
+      "total_commits": 3,
+      "top_contributors": [
+        {
+          "name": "Kimdonghyunn0918",
+          "score": 6.9621,
+          "commit_count": 2,
+          "last_commit_days": 2
+        },
+        {
+          "name": "codeheat",
+          "score": 3.9773,
+          "commit_count": 1,
+          "last_commit_days": 3
+        }
+      ]
+    },
+    {
+      "file": "codeheat/static_scan.py",
+      "total_commits": 2,
+      "top_contributors": [
+        {
+          "name": "codeheat",
+          "score": 8.9489,
+          "commit_count": 1,
+          "last_commit_days": 3
+        },
+        {
+          "name": "Kimdonghyunn0918",
+          "score": 1.0,
+          "commit_count": 1,
+          "last_commit_days": 0
+        }
+      ]
+    },
+    {
+      "file": "codeheat/models.py",
+      "total_commits": 3,
+      "top_contributors": [
+        {
+          "name": "codeheat",
+          "score": 4.9716,
+          "commit_count": 1,
+          "last_commit_days": 3
+        },
+        {
+          "name": "Kimdonghyunn0918",
+          "score": 1.9905,
+          "commit_count": 2,
+          "last_commit_days": 2
+        }
+      ]
+    },
+    {
+      "file": "tests/test_ownership.py",
+      "total_commits": 2,
+      "top_contributors": [
+        {
+          "name": "Kimdonghyunn0918",
+          "score": 5.0,
+          "commit_count": 2,
+          "last_commit_days": 0
+        }
+      ]
+    },
+    {
+      "file": "tests/test_static_scan.py",
+      "total_commits": 1,
+      "top_contributors": [
+        {
+          "name": "Kimdonghyunn0918",
+          "score": 4.0,
+          "commit_count": 1,
+          "last_commit_days": 0
+        }
+      ]
+    },
+    {
+      "file": "tests/test_ci.py",
+      "total_commits": 1,
+      "top_contributors": [
+        {
+          "name": "Kimdonghyunn0918",
+          "score": 3.0,
+          "commit_count": 1,
+          "last_commit_days": 0
+        }
+      ]
+    },
+    {
+      "file": "tests/test_insights.py",
+      "total_commits": 1,
+      "top_contributors": [
+        {
+          "name": "Kimdonghyunn0918",
+          "score": 3.0,
+          "commit_count": 1,
+          "last_commit_days": 0
+        }
+      ]
+    },
+    {
+      "file": "tests/test_models.py",
+      "total_commits": 1,
+      "top_contributors": [
+        {
+          "name": "Kimdonghyunn0918",
+          "score": 2.0,
+          "commit_count": 1,
+          "last_commit_days": 0
+        }
+      ]
+    },
+    {
+      "file": "codeheat/__init__.py",
+      "total_commits": 1,
+      "top_contributors": [
+        {
+          "name": "codeheat",
+          "score": 0.9943,
+          "commit_count": 1,
+          "last_commit_days": 3
+        }
+      ]
+    }
+  ]
+}

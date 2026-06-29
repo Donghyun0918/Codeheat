@@ -7,19 +7,18 @@
 
 ---
 
-## 현재 상태 요약 (2026-06-29 기준)
+## 현재 상태 요약 (2026-06-30 기준)
 
-### 커밋된 것 (git 반영 완료)
-- 1단계 정적 분석(`static_scan.py`) · 2단계 오너십(`ownership.py`) · 3단계 LLM 인사이트(`insights.py`) · TODO 토큰 정밀화 · pytest 스위트
-- 최근 커밋: `4270300 test: pytest 스위트 신설`
+### 커밋된 것 (git 반영 완료, master, 미푸시)
+- 1단계 정적 분석 · 2단계 오너십 · 3단계 LLM 인사이트 · TODO 토큰 정밀화 · pytest 스위트
+- `fbb1f00 feat: 오너십 기여자 식별을 이메일 키로 정규화` (이메일 합산/`--no-merges`/메모리 분석/churn==0 스킵)
+- `bb77b4f feat: PR 복잡도 온도 봇(4단계 GitHub Action)` (`codeheat/ci.py` + 워크플로 + 테스트)
 
 ### 미커밋 작업 (working tree, 사용자 지시로 커밋 보류 중)
-1. **2단계 오너십 개선** — `codeheat/ownership.py`, `tests/test_ownership.py`, `README.md`, `HANDOFF.md`
-   - 기여자 동일인 합산을 `%aE`(이메일, mailmap 반영) 키 기준으로, 표시 이름은 최신 커밋. `--no-merges`로 머지 제외. `_max_ccn_at`를 임시파일 IO 없이 `analyze_source_code` 메모리 분석. churn==0이면 git show 스킵.
-2. **4단계 4-2 PR 봇 신설** — `codeheat/ci.py`, `.github/workflows/codeheat.yml`, `tests/test_ci.py`, `README.md`, `HANDOFF.md`
-   - PR 변경 파일의 base→head 온도(max CCN) 델타 + "물어볼 사람"을 코멘트로 upsert. 자세한 내용은 아래 "완료된 것 — 4단계 4-2" 절.
+- **4단계 4-1 대시보드 신설** — `dashboard/` (Next.js+D3 트리맵 히트맵), `README.md`/`HANDOFF.md` 갱신.
+  - 정적 export(백엔드 없음), 번들 샘플 + 드롭존 업로드. 자세한 내용은 아래 "완료된 것 — 4단계 4-1" 절.
 
-> 검증: `pip install -e .[dev]` 후 `pytest` → 51 passed. `python -m codeheat.cli scan|own|insights` + `python -m codeheat.ci pr-comment --no-post` 동작 확인.
+> 검증: 백엔드 `pytest` 51 passed. 대시보드 `cd dashboard && npm install && npm run build` 통과(타입체크+정적 export). `python -m codeheat.cli scan|own|insights` + `python -m codeheat.ci pr-comment --no-post` 동작 확인.
 
 ---
 
@@ -136,11 +135,29 @@ python -m codeheat.cli scan <repo_path> --no-todo-age   # git log 생략(속도)
 2. PR diff는 반드시 `base...head`(three-dot). two-dot이면 base 브랜치의 무관한 커밋까지 끌고 온다. 정확한 델타엔 체크아웃 `fetch-depth: 0` 필수.
 3. 코멘트 upsert는 마커 문자열을 본문 끝에 심고 issues 코멘트 목록에서 검색 → 있으면 PATCH, 없으면 POST. per_page=100 페이지네이션.
 
+## 완료된 것 — 4단계 4-1 (D3 트리맵 대시보드 `dashboard/`)
+
+목표 달성: CLI 리포트(JSON)를 트리맵 히트맵으로 시각화. 면적=LOC, 색=복잡도 온도(max CCN). 파일 클릭 시 복잡도·TODO·오너십·LLM 인사이트를 옆 패널에 표시.
+- 스택: Next.js 15(App Router) + React 19 + TS. D3는 `d3-hierarchy`(트리맵 레이아웃 계산)만, 렌더는 React가 SVG로(D3가 DOM 직접 조작 안 함). 의존성 최소(설치 29패키지).
+- **백엔드 없음**: `output: "export"` 정적 빌드. 데이터는 브라우저에서만 처리(코드/리포트 서버 미전송) — LLM 미전달 철학과 일관.
+- 데이터 입력: ① 번들 샘플(이 레포 scan+own 결과, `app/sample-data/`) 열자마자 표시 ② 드롭존 업로드(smell/ownership/insights, 모양으로 자동 판별 `classifyReport`). 병합은 CLI `load_and_merge`와 같은 규칙(경로→basename 폴백).
+- 구조: `lib/`(types·merge·treemap 순수로직), `components/`(Treemap·FileDetail·UploadDropzone), `app/`(layout·page·globals.css).
+- 검증: `npm run build` 타입체크+정적 export 통과. 트리맵 레이아웃을 실제 샘플로 검증(12파일→12 leaf, 음수면적 0, 오너 12/12 매칭). `out/` 정적 서빙 200.
+
+### 작업 중 발견/해결한 이슈 (반복 방지용 메모)
+1. 정적 export(`output: "export"`)라 샘플 JSON은 `app/sample-data/`에서 **직접 import**(resolveJsonModule). public/fetch 대신 import라 빌드에 번들되고 정적 배포에서 동작.
+2. D3 treemap leaf 면적은 LOC. `__init__.py`처럼 LOC=0이면 면적 0이 되니 `Math.max(loc,1)`로 최소 슬라이버 보장.
+3. 첫 업로드 시 샘플과 섞이지 않게, `usingSample` 플래그로 첫 패치 때 샘플을 비우고 업로드분으로 시작.
+4. 트리맵은 클라이언트 측정(ResizeObserver) 후 그려지므로, 정적 HTML엔 rect가 없다(JS 실행 후 렌더). 빌드 검증은 타입체크+레이아웃 단위검증으로 갈음(헤드리스 브라우저 미설치).
+
 ## 다음 할 일 (우선순위 순)
 
 ### 4단계 — 남은 출력 레이어
-- 4-1: Next.js + D3 트리맵 대시보드
 - 4-3: VS Code 확장 (가장 나중, 반응 보고 결정)
+
+### 그 외
+- insights 업로드까지 합친 대시보드 풀 데모(현재 샘플엔 insights 미포함; LLM 호출 필요해 번들 제외).
+- 함수 단위 복잡도 매칭(2단계/PR봇 공통 한계), `duplication_ratio` 구현(jscpd).
 
 ---
 

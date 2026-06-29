@@ -9,7 +9,7 @@
 1. **정적 분석** (구현됨) — 복잡도 + TODO/FIXME + 나이
 2. **오너십 분석** (구현됨) — 복잡도 급증 시점 기여자 매칭
 3. **LLM 인사이트** (구현됨) — 숫자/메타데이터만으로 우선순위·질문 대상 제안
-4. 출력 레이어 — **GitHub Action PR 봇 (구현됨)** / 대시보드 / VS Code 확장
+4. 출력 레이어 — **GitHub Action PR 봇 (구현됨)** · **D3 트리맵 대시보드 (구현됨, [`dashboard/`](dashboard/))** / VS Code 확장
 
 > ⚠️ LLM 레이어에는 **코드 본문을 절대 넘기지 않고 숫자/메타데이터만** 전달한다. 1단계 JSON 출력도 이를 염두에 둔 구조다.
 
@@ -101,6 +101,19 @@ permissions:
   pull-requests: write
 # checkout은 fetch-depth: 0 (base...head 델타 계산에 전체 히스토리 필요)
 ```
+
+### 대시보드 (`dashboard/` — D3 트리맵 히트맵)
+
+CLI가 내보낸 리포트를 **트리맵 히트맵**으로 본다. 면적=파일 크기(LOC), 색=복잡도 온도(max CCN). 파일을 클릭하면 복잡도·TODO·도메인 지식 보유자·LLM 인사이트가 옆 패널에 뜬다. 백엔드 없는 정적 사이트(`output: "export"`)라 데이터는 브라우저에서만 처리된다.
+
+```bash
+cd dashboard
+npm install
+npm run dev      # http://localhost:3000
+npm run build    # out/ 에 정적 사이트 생성 (Vercel/GitHub Pages 배포 가능)
+```
+
+열자마자 이 레포로 만든 번들 샘플이 보이고, 드롭존에 `smell_report.json`(+ ownership/insights)을 끌어다 놓으면 교체된다. 자세한 내용은 [`dashboard/README.md`](dashboard/README.md).
 
 ### 출력 (`smell_report.json`)
 

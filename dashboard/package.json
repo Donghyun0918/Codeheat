@@ -1,0 +1,25 @@
+{
+  "name": "codeheat-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CodeHeat 4단계 출력 레이어 — 복잡도/오너십 리포트를 D3 트리맵 히트맵으로 시각화",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "d3-hierarchy": "^3.1.2",
+    "next": "^15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/d3-hierarchy": "^3.1.7",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.3"
+  }
+}
