@@ -1,0 +1,32 @@
+name: CodeHeat
+
+# PR이 열리거나 갱신될 때, 건드린 파일들의 복잡도 '온도' 변화를 코멘트로 단다.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# 코멘트를 달려면 PR(이슈) 쓰기 권한이 필요하다.
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  heat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # base...head 델타 계산을 위해 전체 히스토리를 받는다.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install CodeHeat
+        run: pip install -e .
+
+      - name: Comment heat delta on PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python -m codeheat.ci pr-comment

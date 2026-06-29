@@ -9,7 +9,7 @@
 1. **정적 분석** (구현됨) — 복잡도 + TODO/FIXME + 나이
 2. **오너십 분석** (구현됨) — 복잡도 급증 시점 기여자 매칭
 3. **LLM 인사이트** (구현됨) — 숫자/메타데이터만으로 우선순위·질문 대상 제안
-4. 출력 레이어 — 대시보드 / PR 봇 / VS Code 확장
+4. 출력 레이어 — **GitHub Action PR 봇 (구현됨)** / 대시보드 / VS Code 확장
 
 > ⚠️ LLM 레이어에는 **코드 본문을 절대 넘기지 않고 숫자/메타데이터만** 전달한다. 1단계 JSON 출력도 이를 염두에 둔 구조다.
 
@@ -77,6 +77,31 @@ codeheat insights smell_report.json --dry-run
 
 `ollama` 백엔드는 stdlib만 쓰므로 추가 설치가 없고, `anthropic` 백엔드는 `claude-opus-4-8` + 구조화 출력으로 스키마를 엄격 강제한다. 출력은 `insights_report.json`(파일별 risk/reason/ask_who/ask_what + 전체 summary).
 
+### GitHub Action PR 봇 (`python -m codeheat.ci pr-comment`)
+
+PR이 건드린 코드 파일들의 **히트맵 온도(max CCN)** 가 base→head로 얼마나 변했는지 표로 만들어 PR에 코멘트로 단다. 온도가 오른 파일 옆에는 "막히면 물어볼 사람"(오너십 top 기여자)을 함께 보여준다 — blame이 아니라 매칭.
+
+```bash
+# 로컬에서 두 ref를 비교해 코멘트 본문만 확인 (게시 안 함)
+python -m codeheat.ci pr-comment --base main --head HEAD --no-post
+
+# 오너십 점수를 churn 기준으로(복잡도 델타 생략) 빠르게
+python -m codeheat.ci pr-comment --base main --head HEAD --no-post --churn-only
+```
+
+GitHub Actions에서는 `.github/workflows/codeheat.yml`이 `pull_request` 이벤트마다 실행한다. PR 컨텍스트(base/head SHA·PR 번호·repo)는 이벤트 페이로드와 `GITHUB_*` 환경변수에서 자동으로 읽고, `GITHUB_TOKEN`으로 코멘트를 단다. 같은 PR에 push가 쌓여도 **숨김 마커로 기존 코멘트를 찾아 갱신(upsert)** 하므로 코멘트가 중복되지 않는다. 코멘트 게시는 stdlib `urllib`만 쓴다(추가 의존성 0).
+
+```yaml
+# .github/workflows/codeheat.yml (요약)
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+  pull-requests: write
+# checkout은 fetch-depth: 0 (base...head 델타 계산에 전체 히스토리 필요)
+```
+
 ### 출력 (`smell_report.json`)
 
 복잡도(파일 내 최대 CCN) 내림차순 정렬:
@@ -106,6 +131,20 @@ codeheat insights smell_report.json --dry-run
 - **`duplication_ratio`는 미구현** (기본값 0.0). 2단계에서 jscpd 등 연동 예정.
 - **`git log -S`(pickaxe)는 TODO 텍스트 앞 40자만 사용**한다. 문구가 너무 일반적이면 오매칭 가능. git 미설치/타임아웃/미추적 파일이면 `age_days`는 `null`.
 - `exclude`는 디렉토리 단위(node_modules/.git/venv/.venv)만 고정 제외.
+
+## 알려진 한계 (2단계 오너십)
+
+- **기여자는 이메일(`%aE`) 기준으로 합산**한다. `%aN`/`%aE`는 `.mailmap`을 반영하므로, 한 사람이 여러 이름/메일로 쪼개지는 걸 막으려면 레포 루트에 `.mailmap`을 두면 된다. 표시 이름은 그 이메일의 가장 최근 커밋 이름을 쓴다.
+- **머지 커밋은 `--no-merges`로 제외**한다(churn/점수 왜곡 방지).
+- **복잡도 델타는 파일 단위 max CCN 기준**이다. 그 커밋이 실제로 건드린 함수가 아니어도 파일 전체 복잡도가 오르면 가중된다. (함수 단위 매칭은 향후 과제)
+- 델타 계산은 커밋마다 `git show`를 1회 한다. 임시파일 IO는 없앴지만(`analyze_source_code`로 메모리 분석), 커밋이 매우 많은 파일은 여전히 느릴 수 있다 — `--churn-only`로 끄거나 `--limit`으로 파일 수를 줄이면 빠르다.
+
+## 알려진 한계 (4단계 PR 봇)
+
+- **온도는 파일 단위 max CCN**이다(1단계 `complexity`와 같은 정의). 함수 단위 증감이 아니라 파일 최대치라, 함수가 쪼개져도 다른 함수가 더 복잡하면 온도가 안 내려갈 수 있다.
+- **비코드 파일(.md/.json/.toml 등)은 표에서 제외**한다(`lizard.get_reader_for`가 인식하는 언어만). 복잡도 개념이 없는 파일을 노이즈로 올리지 않기 위해서다.
+- **base가 없으면(=완전한 신규 파일) 델타 대신 "🆕 신규"** 로 표시하고, 그 파일의 전체 복잡도를 영향도로 본다.
+- `base...head`(three-dot) diff라 base 브랜치에 쌓인 무관한 커밋은 끌고 오지 않는다. 단, 정확한 델타를 위해 Action 체크아웃은 `fetch-depth: 0`이어야 한다.
 
 ## 라이선스
 

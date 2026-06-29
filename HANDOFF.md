@@ -7,23 +7,19 @@
 
 ---
 
-## 현재 상태 요약 (2026-06-28 기준)
+## 현재 상태 요약 (2026-06-29 기준)
 
-### 커밋된 것 (git 반영 완료, origin/master 푸시됨)
-- 1단계 정적 분석(`static_scan.py`) · 2단계 오너십(`ownership.py`) · 3단계 LLM 인사이트(`insights.py`)
-- 최근 커밋: `f0964e2 feat: CodeHeat 3단계 LLM 인사이트 레이어 구현`
+### 커밋된 것 (git 반영 완료)
+- 1단계 정적 분석(`static_scan.py`) · 2단계 오너십(`ownership.py`) · 3단계 LLM 인사이트(`insights.py`) · TODO 토큰 정밀화 · pytest 스위트
+- 최근 커밋: `4270300 test: pytest 스위트 신설`
 
-### 미커밋 작업 (working tree, 아직 commit 안 함)
-사용자 지시로 커밋 보류 중. 다음 두 묶음으로 나눠 커밋하면 깔끔함:
+### 미커밋 작업 (working tree, 사용자 지시로 커밋 보류 중)
+1. **2단계 오너십 개선** — `codeheat/ownership.py`, `tests/test_ownership.py`, `README.md`, `HANDOFF.md`
+   - 기여자 동일인 합산을 `%aE`(이메일, mailmap 반영) 키 기준으로, 표시 이름은 최신 커밋. `--no-merges`로 머지 제외. `_max_ccn_at`를 임시파일 IO 없이 `analyze_source_code` 메모리 분석. churn==0이면 git show 스킵.
+2. **4단계 4-2 PR 봇 신설** — `codeheat/ci.py`, `.github/workflows/codeheat.yml`, `tests/test_ci.py`, `README.md`, `HANDOFF.md`
+   - PR 변경 파일의 base→head 온도(max CCN) 델타 + "물어볼 사람"을 코멘트로 upsert. 자세한 내용은 아래 "완료된 것 — 4단계 4-2" 절.
 
-1. **TODO 탐지 정밀화** — `codeheat/static_scan.py`, `pyproject.toml`(pygments 의존성), `README.md`, `HANDOFF.md`
-   - 정규식 라인 스캔 → **Pygments 토큰화로 진짜 주석만** + 마커 앵커 규칙. 산문/식별자/정규식정의/코드문장/문자열 리터럴 속 가짜 주석(`s = "# TODO"`)까지 전부 배제.
-   - 폴백(Pygments 없음/미지원 확장자)도 `_mask_strings`로 한 줄 문자열 마스킹. 셀프 스캔 0 오탐.
-2. **테스트 스위트 신설** — `tests/`(4파일, 36개 통과), `pyproject.toml`(pytest 설정 + `dev` extra)
-   - models / static_scan / ownership / insights 커버. git·LLM 호출은 monkeypatch로 오프라인 검증.
-   - 핵심 불변식 회귀 방지: insights 프롬프트에 코드 본문 미유출, TODO 문자열/산문/코드 음성 케이스.
-
-> 검증: `pip install -e .[dev]` 후 `pytest` → 36 passed. `python -m codeheat.cli scan|own|insights` 동작 확인.
+> 검증: `pip install -e .[dev]` 후 `pytest` → 51 passed. `python -m codeheat.cli scan|own|insights` + `python -m codeheat.ci pr-comment --no-post` 동작 확인.
 
 ---
 
@@ -87,11 +83,12 @@ python -m codeheat.cli scan <repo_path> --no-todo-age   # git log 생략(속도)
 ## 완료된 것 — 2단계 (오너십 분석 `ownership.py`)
 
 목표 달성: 파일별로 "도메인 지식 점수"가 높은 기여자 1~2명 추출.
-- `git log --follow --numstat --format=%H|%an|%at -- <file>` 한 번으로 메타데이터+churn 수집
+- `git log --no-merges --follow --numstat --format=%H|%aN|%aE|%at -- <file>` 한 번으로 메타데이터+churn 수집. `%aN`/`%aE`는 `.mailmap` 반영, `--no-merges`로 머지 제외.
 - 핵심 정의대로 단순 최다 수정자가 아니라 **복잡도가 급증한 시점에 커밋한 사람**에 가중치
+- **동일인 합산은 이메일(`%aE`) 키 기준**. 표시 이름은 그 이메일의 가장 최근 커밋 이름.
 - 점수 = Σ(최근성 가중치 × 변화량 가중치)
   - 최근성: 반감기 1년 지수 감쇠 (`_recency_weight`)
-  - 변화량: `git show <commit>:<path>`를 lizard로 분석한 max CCN 델타. 실패 시 `log1p(churn)` 폴백
+  - 변화량: `git show <commit>:<path>`를 `lizard.analyze_file.analyze_source_code`로 **메모리 분석**(임시파일 IO 없음)한 max CCN 델타. churn==0이면 git show 생략. 실패 시 `log1p(churn)` 폴백
 - CLI: `codeheat own <repo>` (`--from-report`, `--top`, `--limit`, `--churn-only`)
 - 출력: `ownership_report.json` (파일별 top_contributors 리스트)
 - 동작 확인: 이 레포에 `scan → own` 파이프라인으로 검증 완료
@@ -100,6 +97,8 @@ python -m codeheat.cli scan <repo_path> --no-todo-age   # git log 생략(속도)
 1. `git log --numstat`은 최신→과거 순으로 나오므로, 복잡도 델타를 시간순으로 누적하려면 `reverse()` 필요
 2. `--from-report` 입력은 1단계가 이미 복잡도 내림차순 정렬해둔 순서를 그대로 보존(우선순위 승계)
 3. LLM 레이어 제약대로 `FileOwnershipReport`도 이름/점수/메타데이터만 담고 코드 본문은 안 넘김
+4. **헤더 파싱은 고정 위치 기준**: 이름에 `|`가 들어갈 수 있으니 `hash=처음`, `email=끝-1`, `ts=끝`으로 자르고 가운데를 이름으로 되붙인다.
+5. 남은 한계: 복잡도 델타가 파일 단위 max CCN이라 그 작성자가 만진 함수가 아니어도 가중됨(함수 단위 매칭은 향후). git show는 커밋마다 1회라 초대형 히스토리는 여전히 느릴 수 있음(`--churn-only`/`--limit`로 완화).
 
 ---
 
@@ -120,11 +119,27 @@ python -m codeheat.cli scan <repo_path> --no-todo-age   # git log 생략(속도)
 2. `claude-api` 스킬 기준 opus-4-8은 `budget_tokens` 금지(400). `thinking={"type":"adaptive"}` 사용.
 3. anthropic SDK는 지연 import(`_generate_anthropic` 내부) — ollama 경로만 쓰면 anthropic 미설치여도 패키지 동작.
 
+## 완료된 것 — 4단계 4-2 (GitHub Action PR 봇 `ci.py`)
+
+목표 달성: PR이 건드린 코드 파일들의 "히트맵 온도(max CCN)"가 base→head로 얼마나 올랐는지 표로 만들어 PR에 코멘트로 단다("이 PR로 checkout.py 온도 상승"). 온도 오른 파일 옆에 오너십 top 기여자를 "막히면 물어볼 사람"으로 함께 표시 — blame 아니라 매칭.
+- `get_changed_files()`: `git diff --name-only --diff-filter=d base...head`(three-dot, 삭제 제외)로 변경 파일 수집.
+- 온도/델타: **`ownership._max_ccn_at`를 그대로 재사용**해 base/head 각 시점 파일의 max CCN을 구해 뺀다(임시파일 IO 없음, 1·2단계와 같은 복잡도 정의). 비코드(.md/.json 등)는 `lizard.get_reader_for`로 사전 필터 → 오너십/git show 호출도 절약.
+- 오너: `build_ownership_reports(..., top_n=1)` 재사용, `os.path.normpath(rel)` 키로 매칭.
+- 코멘트 게시: **stdlib urllib만** (ollama 백엔드와 동일 정책, 추가 의존성 0). 숨김 마커(`<!-- codeheat:pr-comment -->`)로 기존 코멘트를 찾아 **upsert**(push마다 중복 코멘트 방지).
+- PR 컨텍스트: `GITHUB_EVENT_PATH` 페이로드 + `GITHUB_*` 환경변수에서 base/head/PR번호/repo 자동 해석. CLI 인자가 우선.
+- CLI: `python -m codeheat.ci pr-comment [--repo --base --head --pr --repo-slug --churn-only --output --no-post]`. `--no-post`로 로컬 본문 확인.
+- 워크플로: `.github/workflows/codeheat.yml` (pull_request 트리거, `fetch-depth: 0`, `pull-requests: write`).
+- 검증: `tests/test_ci.py` 12개(변경파일 파싱/비코드필터/델타·영향도/코멘트 마크다운/조립·오너매칭/upsert PATCH·POST/이벤트 파싱). 이 레포에서 `--base HEAD~2 --head HEAD --no-post` 스모크 OK. 전체 51 passed.
+
+### 작업 중 발견/해결한 이슈 (반복 방지용 메모)
+1. lizard는 **미지원 확장자에 예외가 아니라 빈 결과(→max CCN 0)** 를 준다. `_max_ccn_at`의 None 가드만으론 .md/.toml이 온도 0으로 표에 새어들어옴 → `lizard.get_reader_for(path) is None`으로 사전 필터해야 한다.
+2. PR diff는 반드시 `base...head`(three-dot). two-dot이면 base 브랜치의 무관한 커밋까지 끌고 온다. 정확한 델타엔 체크아웃 `fetch-depth: 0` 필수.
+3. 코멘트 upsert는 마커 문자열을 본문 끝에 심고 issues 코멘트 목록에서 검색 → 있으면 PATCH, 없으면 POST. per_page=100 페이지네이션.
+
 ## 다음 할 일 (우선순위 순)
 
-### 4단계 — 출력 레이어
+### 4단계 — 남은 출력 레이어
 - 4-1: Next.js + D3 트리맵 대시보드
-- 4-2: GitHub Action PR 봇 ("이 PR로 checkout.py 히트맵 온도 상승")
 - 4-3: VS Code 확장 (가장 나중, 반응 보고 결정)
 
 ---
