@@ -9,7 +9,7 @@
 1. **정적 분석** (구현됨) — 복잡도 + TODO/FIXME + 나이
 2. **오너십 분석** (구현됨) — 복잡도 급증 시점 기여자 매칭
 3. **LLM 인사이트** (구현됨) — 숫자/메타데이터만으로 우선순위·질문 대상 제안
-4. 출력 레이어 — **GitHub Action PR 봇 (구현됨)** · **D3 트리맵 대시보드 (구현됨, [`dashboard/`](dashboard/))** / VS Code 확장
+4. 출력 레이어 — **GitHub Action PR 봇 (구현됨)** · **D3 트리맵 대시보드 (구현됨, [`dashboard/`](dashboard/))** · **VS Code 확장 (구현됨, [`vscode-extension/`](vscode-extension/))**
 
 > ⚠️ LLM 레이어에는 **코드 본문을 절대 넘기지 않고 숫자/메타데이터만** 전달한다. 1단계 JSON 출력도 이를 염두에 둔 구조다.
 
@@ -114,6 +114,18 @@ npm run build    # out/ 에 정적 사이트 생성 (Vercel/GitHub Pages 배포 
 ```
 
 열자마자 이 레포로 만든 번들 샘플이 보이고, 드롭존에 `smell_report.json`(+ ownership/insights)을 끌어다 놓으면 교체된다. 자세한 내용은 [`dashboard/README.md`](dashboard/README.md).
+
+### VS Code 확장 (`vscode-extension/`)
+
+복잡도 히트맵을 에디터 안으로. 사이드바의 🔥 뷰에 파일을 복잡도(온도) 내림차순으로 보여주고(핫파일=빨간 불꽃), 클릭하면 열리고 호버하면 오너/위험도/TODO가 뜬다. 상태바에는 현재 파일의 `🔥 CCN N · 오너`를 표시한다. 워크스페이스 루트의 리포트 JSON을 읽고, 없으면 뷰의 "워크스페이스 스캔" 버튼으로 CLI를 돌려 만든다.
+
+```bash
+cd vscode-extension
+npm install
+npm run compile   # 이후 VS Code에서 폴더 열고 F5(Extension Development Host)
+```
+
+자세한 내용은 [`vscode-extension/README.md`](vscode-extension/README.md).
 
 ### 출력 (`smell_report.json`)
 

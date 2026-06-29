@@ -1,0 +1,75 @@
+{
+  "name": "codeheat-vscode",
+  "displayName": "CodeHeat",
+  "description": "코드 복잡도 히트맵을 에디터 사이드바·상태바에 — 누가 쌌나(blame)가 아니라 누가 해결할 수 있나(매칭).",
+  "version": "0.1.0",
+  "publisher": "codeheat",
+  "private": true,
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Visualization", "Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        { "id": "codeheat", "title": "CodeHeat", "icon": "media/flame.svg" }
+      ]
+    },
+    "views": {
+      "codeheat": [
+        { "id": "codeheat.heatmap", "name": "히트맵" }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "codeheat.heatmap",
+        "contents": "리포트가 없습니다.\n워크스페이스 루트에 `smell_report.json`을 두거나 아래로 생성하세요.\n[워크스페이스 스캔 (scan + own)](command:codeheat.runScan)\n스캔에는 `codeheat` CLI가 필요합니다 (pip install -e .)."
+      }
+    ],
+    "commands": [
+      { "command": "codeheat.refresh", "title": "리포트 새로고침", "category": "CodeHeat", "icon": "$(refresh)" },
+      { "command": "codeheat.runScan", "title": "워크스페이스 스캔 (scan + own)", "category": "CodeHeat", "icon": "$(search)" }
+    ],
+    "menus": {
+      "view/title": [
+        { "command": "codeheat.runScan", "when": "view == codeheat.heatmap", "group": "navigation@1" },
+        { "command": "codeheat.refresh", "when": "view == codeheat.heatmap", "group": "navigation@2" }
+      ]
+    },
+    "configuration": {
+      "title": "CodeHeat",
+      "properties": {
+        "codeheat.smellReportPath": {
+          "type": "string",
+          "default": "smell_report.json",
+          "description": "복잡도/TODO 리포트 경로 (워크스페이스 루트 기준 상대경로 또는 절대경로)."
+        },
+        "codeheat.ownershipReportPath": {
+          "type": "string",
+          "default": "ownership_report.json",
+          "description": "오너십 리포트 경로 (선택)."
+        },
+        "codeheat.insightsReportPath": {
+          "type": "string",
+          "default": "insights_report.json",
+          "description": "LLM 인사이트 리포트 경로 (선택)."
+        },
+        "codeheat.cliCommand": {
+          "type": "string",
+          "default": "codeheat",
+          "description": "CodeHeat CLI 실행 명령. 예: codeheat, python -m codeheat.cli"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "tsc -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.7.3"
+  }
+}

@@ -13,12 +13,15 @@
 - 1단계 정적 분석 · 2단계 오너십 · 3단계 LLM 인사이트 · TODO 토큰 정밀화 · pytest 스위트
 - `fbb1f00 feat: 오너십 기여자 식별을 이메일 키로 정규화` (이메일 합산/`--no-merges`/메모리 분석/churn==0 스킵)
 - `bb77b4f feat: PR 복잡도 온도 봇(4단계 GitHub Action)` (`codeheat/ci.py` + 워크플로 + 테스트)
+- `c196bbe feat: D3 트리맵 대시보드(4단계 4-1)` (`dashboard/`, Next.js+React+D3, 정적 export)
 
 ### 미커밋 작업 (working tree, 사용자 지시로 커밋 보류 중)
-- **4단계 4-1 대시보드 신설** — `dashboard/` (Next.js+D3 트리맵 히트맵), `README.md`/`HANDOFF.md` 갱신.
-  - 정적 export(백엔드 없음), 번들 샘플 + 드롭존 업로드. 자세한 내용은 아래 "완료된 것 — 4단계 4-1" 절.
+- **4단계 4-3 VS Code 확장 신설** — `vscode-extension/` (사이드바 히트맵 트리뷰 + 상태바), `README.md`/`HANDOFF.md` 갱신.
+  - 리포트 JSON 재사용, 워크스페이스 스캔 명령. 자세한 내용은 아래 "완료된 것 — 4단계 4-3" 절.
 
-> 검증: 백엔드 `pytest` 51 passed. 대시보드 `cd dashboard && npm install && npm run build` 통과(타입체크+정적 export). `python -m codeheat.cli scan|own|insights` + `python -m codeheat.ci pr-comment --no-post` 동작 확인.
+> 검증: 백엔드 `pytest` 51 passed. 대시보드 `npm run build` 통과. 확장 `cd vscode-extension && npm install && npm run compile` 통과(타입에러 0) + `reports.js` 샘플 단위검증. CLI 동작 확인.
+
+> **4단계(출력 레이어) 4-1·4-2·4-3 전부 구현 완료.** 남은 것은 백로그(함수 단위 매칭, duplication_ratio, insights 풀데모)뿐.
 
 ---
 
@@ -150,12 +153,24 @@ python -m codeheat.cli scan <repo_path> --no-todo-age   # git log 생략(속도)
 3. 첫 업로드 시 샘플과 섞이지 않게, `usingSample` 플래그로 첫 패치 때 샘플을 비우고 업로드분으로 시작.
 4. 트리맵은 클라이언트 측정(ResizeObserver) 후 그려지므로, 정적 HTML엔 rect가 없다(JS 실행 후 렌더). 빌드 검증은 타입체크+레이아웃 단위검증으로 갈음(헤드리스 브라우저 미설치).
 
-## 다음 할 일 (우선순위 순)
+## 완료된 것 — 4단계 4-3 (VS Code 확장 `vscode-extension/`)
 
-### 4단계 — 남은 출력 레이어
-- 4-3: VS Code 확장 (가장 나중, 반응 보고 결정)
+목표 달성: 복잡도 히트맵을 에디터 사이드바·상태바로. (사용자가 인터랙션 방식으로 "사이드바 트리뷰 + 상태바" 선택.)
+- **사이드바 트리뷰**(`codeheat.heatmap`, 활동막대 🔥): 파일을 복잡도 내림차순으로. 핫파일=빨간 불꽃(`ThemeIcon('flame')` + `charts.red/orange/yellow/green` 내장색). 클릭=`vscode.open`, 호버=오너/위험도/TODO MarkdownString.
+- **상태바**: 활성 파일의 `🔥 CCN N · 오너`. 리포트에 없으면 숨김. 클릭=`codeheat.heatmap.focus`.
+- 데이터: 워크스페이스 루트의 `smell/ownership/insights_report.json`(경로 설정 가능)을 읽어 병합(경로→basename 폴백, CLI `load_and_merge`와 동일). 없으면 `viewsWelcome`에서 스캔 유도.
+- 명령: `codeheat.runScan`(CLI `scan`+`own`을 child_process로 실행해 리포트 생성), `codeheat.refresh`(디스크 재로드). 설정 `codeheat.cliCommand`로 CLI 교체(예: `python -m codeheat.cli`).
+- 구조: `src/extension.ts`(activate/wire), `reports.ts`(로드+병합, vscode 비의존 순수), `heatProvider.ts`(TreeDataProvider), `status.ts`, `scan.ts`. `tsc -p ./` → `out/`.
+- 검증: `npm run compile` 타입에러 0. `reports.js`(vscode 비의존)를 샘플로 단위검증(12파일, 복잡도 내림차순, 오너 12/12, 경로 정규화). 확장 호스트 실행(F5)은 환경상 미실행 — `vscode` 모듈은 런타임 주입이라 호스트 밖 require 불가.
 
-### 그 외
+### 작업 중 발견/해결한 이슈 (반복 방지용 메모)
+1. `vscode` 모듈은 npm이 아니라 VS Code 런타임이 주입한다. `out/extension.js`를 node로 require하면 "Cannot find module 'vscode'" — 정상. 검증은 vscode 비의존 로직(`reports.ts`)을 분리해 단위테스트 + `tsc` 타입체크로 갈음.
+2. 리포트 `file` 경로가 절대/상대 섞일 수 있어, 로드 시 워크스페이스 루트 기준 `rel`(슬래시 정규화)로 통일해 트리/상태바/열기 매칭에 쓴다.
+3. 트리 아이템 색은 커스텀 색 등록 없이 내장 `charts.*` ThemeColor로. 상태바 클릭 점프는 `{viewId}.focus`(VS Code 자동 제공).
+
+## 다음 할 일
+
+### 백로그
 - insights 업로드까지 합친 대시보드 풀 데모(현재 샘플엔 insights 미포함; LLM 호출 필요해 번들 제외).
 - 함수 단위 복잡도 매칭(2단계/PR봇 공통 한계), `duplication_ratio` 구현(jscpd).
 
