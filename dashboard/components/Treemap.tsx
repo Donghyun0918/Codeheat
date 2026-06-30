@@ -45,20 +45,30 @@ export default function Treemap({
     <div ref={ref} className="treemap-wrap">
       {root && (
         <svg width={width} height={height} role="img" aria-label="복잡도 히트맵 트리맵">
-          {/* 디렉토리 라벨 (leaf가 아닌 내부 노드) */}
+          {/* 디렉토리 라벨 (leaf가 아닌 내부 노드). 너무 좁은 칸은 생략하고,
+              긴 이름이 칸을 넘지 않게 헤더 밴드로 클리핑한다. */}
           {root
             .descendants()
             .filter((n) => n.depth > 0 && n.children)
-            .map((n, i) => (
-              <text
-                key={`dir-${i}`}
-                x={n.x0 + 4}
-                y={n.y0 + 11}
-                className="dir-label"
-              >
-                {n.data.name}
-              </text>
-            ))}
+            .map((n, i) => {
+              const dw = n.x1 - n.x0;
+              if (dw < 28) return null; // 라벨이 의미 없을 만큼 좁으면 숨김
+              return (
+                <g key={`dir-${i}`}>
+                  <clipPath id={`dirclip-${i}`}>
+                    <rect x={n.x0} y={n.y0} width={dw} height={14} />
+                  </clipPath>
+                  <text
+                    x={n.x0 + 4}
+                    y={n.y0 + 11}
+                    className="dir-label"
+                    clipPath={`url(#dirclip-${i})`}
+                  >
+                    {n.data.name}
+                  </text>
+                </g>
+              );
+            })}
 
           {/* 파일 leaf */}
           {root.leaves().map((n, i) => {
@@ -67,6 +77,7 @@ export default function Treemap({
             const w = n.x1 - n.x0;
             const h = n.y1 - n.y0;
             const selected = f.path === selectedPath;
+            const showLabel = w > 46 && h > 18;
             return (
               <g
                 key={`leaf-${i}`}
@@ -86,15 +97,31 @@ export default function Treemap({
                   {f.path} · 복잡도 {f.complexity} · {f.loc} LOC
                   {f.askWho ? ` · 물어볼 사람: ${f.askWho}` : ""}
                 </title>
-                {w > 46 && h > 18 && (
-                  <text x={4} y={14} className="leaf-label">
-                    {f.path.split("/").pop()}
-                  </text>
-                )}
-                {w > 46 && h > 32 && (
-                  <text x={4} y={28} className="leaf-sub">
-                    CCN {f.complexity}
-                  </text>
+                {showLabel && (
+                  <>
+                    {/* 라벨이 칸 밖으로 새지 않게 셀 경계로 클리핑 */}
+                    <clipPath id={`leafclip-${i}`}>
+                      <rect width={Math.max(w - 2, 0)} height={Math.max(h, 0)} />
+                    </clipPath>
+                    <text
+                      x={4}
+                      y={14}
+                      className="leaf-label"
+                      clipPath={`url(#leafclip-${i})`}
+                    >
+                      {f.path.split("/").pop()}
+                    </text>
+                    {h > 32 && (
+                      <text
+                        x={4}
+                        y={28}
+                        className="leaf-sub"
+                        clipPath={`url(#leafclip-${i})`}
+                      >
+                        CCN {f.complexity}
+                      </text>
+                    )}
+                  </>
                 )}
               </g>
             );

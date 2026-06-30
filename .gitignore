@@ -7,6 +7,11 @@ venv/
 build/
 dist/
 
-# CodeHeat 출력물
+# CodeHeat 출력물 (루트에 생성되는 리포트만 무시)
 smell_report.json
+/ownership_report.json
+/insights_report.json
 *.smell.json
+tc_*_report.json
+# 단, 대시보드 번들 샘플은 추적 대상
+!dashboard/app/sample-data/*.json

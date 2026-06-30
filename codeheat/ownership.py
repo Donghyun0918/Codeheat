@@ -51,6 +51,22 @@ class _Commit:
     path: str  # --follow 추적상 그 시점의 경로
 
 
+def _rel_to_repo(repo_path: str, file_path: str) -> str:
+    """파일 경로를 repo_path 기준 상대경로로 정규화.
+
+    `--from-report` 입력은 이미 repo 기준 상대경로("sub/x.py")인데, repo_path가
+    절대경로이고 cwd와 다르면 이를 그대로 relpath 하면 cwd 기준으로 어긋난다
+    (예: "../../abs/repo/sub/x.py"). 상대경로는 repo_path에 먼저 붙여 절대화한
+    뒤 relpath 한다. 절대경로 입력은 그대로 relpath.
+    """
+    abs_path = (
+        file_path
+        if os.path.isabs(file_path)
+        else os.path.join(repo_path, file_path)
+    )
+    return os.path.relpath(abs_path, repo_path)
+
+
 def _run_git(repo_path: str, args: list[str]) -> str | None:
     """git 서브커맨드 실행. 실패/타임아웃 시 None."""
     try:
@@ -73,7 +89,7 @@ def get_commit_history(repo_path: str, file_path: str) -> list[_Commit]:
     `git log --no-merges --follow --numstat --format=%H|%aN|%aE|%at` 한 번으로
     메타데이터와 변경량을 함께 파싱한다. `%aN`/`%aE`는 `.mailmap`을 반영한다.
     """
-    rel = os.path.relpath(file_path, repo_path)
+    rel = _rel_to_repo(repo_path, file_path)
     out = _run_git(
         repo_path,
         [
@@ -219,7 +235,7 @@ def compute_ownership(
     use_complexity_delta: bool = True,
 ) -> FileOwnershipReport:
     """파일 하나의 오너십 리포트 생성."""
-    rel = os.path.relpath(file_path, repo_path)
+    rel = _rel_to_repo(repo_path, file_path)
     commits = get_commit_history(repo_path, file_path)
     if not commits:
         return FileOwnershipReport(file=rel, total_commits=0, top_contributors=[])

@@ -27,7 +27,29 @@ export function buildTree(files: MergedFile[]): TreeNode {
       node = child;
     });
   }
+  collapseChains(root);
   return root;
+}
+
+// 외길 디렉토리 체인(자식이 디렉토리 하나뿐)을 한 노드로 접는다.
+// "tpot/docker/p0f/<files>"처럼 깊지만 갈라지지 않는 구조가 헤더 밴드를
+// 층층이 쌓아 라벨이 겹치고 영역을 잡아먹던 문제를 줄인다. 이름은 "a/b/c"로 합침.
+function collapseChains(node: TreeNode): void {
+  if (!node.children) return;
+  for (const child of node.children) {
+    while (
+      child.children &&
+      child.children.length === 1 &&
+      child.children[0].children && // 단일 자식이 '디렉토리'일 때만 접음
+      child.children[0].file === undefined
+    ) {
+      const grand = child.children[0];
+      child.name = `${child.name}/${grand.name}`;
+      child.children = grand.children;
+      child.file = grand.file;
+    }
+    collapseChains(child);
+  }
 }
 
 export interface LaidOutNode extends HierarchyRectangularNode<TreeNode> {}

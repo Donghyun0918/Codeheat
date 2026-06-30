@@ -1,0 +1,132 @@
+{
+  "repo_path": ".",
+  "file_count": 12,
+  "files": [
+    {
+      "file": "codeheat/ownership.py",
+      "complexity": 12,
+      "avg_complexity": 5.0,
+      "function_count": 7,
+      "loc": 140,
+      "todos": [],
+      "duplication_ratio": 0.0,
+      "oldest_todo_days": null
+    },
+    {
+      "file": "codeheat/ci.py",
+      "complexity": 11,
+      "avg_complexity": 4.24,
+      "function_count": 17,
+      "loc": 230,
+      "todos": [],
+      "duplication_ratio": 0.0,
+      "oldest_todo_days": null
+    },
+    {
+      "file": "codeheat/insights.py",
+      "complexity": 9,
+      "avg_complexity": 4.71,
+      "function_count": 7,
+      "loc": 157,
+      "todos": [],
+      "duplication_ratio": 0.0,
+      "oldest_todo_days": null
+    },
+    {
+      "file": "codeheat/cli.py",
+      "complexity": 8,
+      "avg_complexity": 4.0,
+      "function_count": 6,
+      "loc": 195,
+      "todos": [],
+      "duplication_ratio": 0.0,
+      "oldest_todo_days": null
+    },
+    {
+      "file": "codeheat/static_scan.py",
+      "complexity": 8,
+      "avg_complexity": 4.25,
+      "function_count": 8,
+      "loc": 116,
+      "todos": [],
+      "duplication_ratio": 0.0,
+      "oldest_todo_days": null
+    },
+    {
+      "file": "codeheat/models.py",
+      "complexity": 4,
+      "avg_complexity": 1.83,
+      "function_count": 6,
+      "loc": 41,
+      "todos": [],
+      "duplication_ratio": 0.0,
+      "oldest_todo_days": null
+    },
+    {
+      "file": "tests/test_ownership.py",
+      "complexity": 3,
+      "avg_complexity": 1.33,
+      "function_count": 9,
+      "loc": 73,
+      "todos": [],
+      "duplication_ratio": 0.0,
+      "oldest_todo_days": null
+    },
+    {
+      "file": "tests/test_static_scan.py",
+      "complexity": 3,
+      "avg_complexity": 1.75,
+      "function_count": 12,
+      "loc": 124,
+      "todos": [],
+      "duplication_ratio": 0.0,
+      "oldest_todo_days": null
+    },
+    {
+      "file": "tests/test_ci.py",
+      "complexity": 2,
+      "avg_complexity": 1.24,
+      "function_count": 17,
+      "loc": 120,
+      "todos": [],
+      "duplication_ratio": 0.0,
+      "oldest_todo_days": null
+    },
+    {
+      "file": "tests/test_insights.py",
+      "complexity": 2,
+      "avg_complexity": 1.1,
+      "function_count": 10,
+      "loc": 109,
+      "todos": [
+        {
+          "line": 94,
+          "text": "# TODO 본문 텍스트(코드/주석 내용)는 프롬프트에 들어가지 않는다",
+          "age_days": 0
+        }
+      ],
+      "duplication_ratio": 0.0,
+      "oldest_todo_days": 0
+    },
+    {
+      "file": "tests/test_models.py",
+      "complexity": 1,
+      "avg_complexity": 1.0,
+      "function_count": 5,
+      "loc": 54,
+      "todos": [],
+      "duplication_ratio": 0.0,
+      "oldest_todo_days": null
+    },
+    {
+      "file": "codeheat/__init__.py",
+      "complexity": 0,
+      "avg_complexity": 0.0,
+      "function_count": 0,
+      "loc": 0,
+      "todos": [],
+      "duplication_ratio": 0.0,
+      "oldest_todo_days": null
+    }
+  ]
+}

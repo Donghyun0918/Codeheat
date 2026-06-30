@@ -98,6 +98,25 @@ def test_get_commit_history_handles_pipe_in_name(monkeypatch):
     assert commits[0].timestamp == 1500000000
 
 
+def test_get_commit_history_relative_path_outside_cwd(monkeypatch):
+    """레포 밖에서 절대 repo_path + 상대 파일경로로 돌려도 git에 올바른 상대경로가 간다.
+
+    옛 버그: relpath('sub/x.py', '/abs/repo')가 cwd 기준 '../../...'로 어긋나
+    히스토리 0이 됐다. _rel_to_repo로 repo 기준 정규화한다.
+    """
+    seen = {}
+
+    def fake_run_git(repo, args):
+        seen["args"] = args
+        return "h|N|e@x|1\n2\t0\tsub/x.py\n"
+
+    monkeypatch.setattr(ownership, "_run_git", fake_run_git)
+    # repo_path는 절대, file_path는 repo 기준 상대 (--from-report가 주는 형태)
+    get_commit_history("/abs/repo", "sub/x.py")
+    # git 인자 끝의 '-- <path>'가 'sub/x.py'여야 한다 ('../' 끼면 버그)
+    assert seen["args"][-1] == "sub/x.py"
+
+
 def test_get_commit_history_empty_on_no_output(monkeypatch):
     monkeypatch.setattr(ownership, "_run_git", lambda repo, args: None)
     assert get_commit_history("/repo", "/repo/file.py") == []
