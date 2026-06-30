@@ -14,7 +14,19 @@ from .models import FileSmellReport, TodoItem
 
 # 스캔에서 제외할 디렉토리. lizard.analyze의 exclude_pattern은 glob이므로
 # 경로 어디에 있든 매칭되도록 양쪽에 와일드카드를 둔다.
-EXCLUDE_DIRS = ["node_modules", ".git", "venv", ".venv"]
+# 의존성(node_modules)·VCS·가상환경에 더해, 빌드 산출물(.next/out/dist/build)도
+# 제외한다 — 미니파이된 생성 코드가 '가장 뜨겁고 중복 많은 파일'로 잡혀 리포트를
+# 오염시키기 때문. (사람이 손대는 소스가 아니므로 리팩토링/오너십 대상도 아니다.)
+EXCLUDE_DIRS = [
+    "node_modules",
+    ".git",
+    "venv",
+    ".venv",
+    ".next",
+    "out",
+    "dist",
+    "build",
+]
 EXCLUDE_PATTERNS = [f"*/{d}/*" for d in EXCLUDE_DIRS]
 
 # 마커 탐지는 2단계로 한다:

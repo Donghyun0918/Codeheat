@@ -141,6 +141,27 @@ def test_mask_strings_unit():
     assert _mask_strings("# it's fine") == "# it's fine"
 
 
+def test_build_smell_reports_excludes_build_artifacts(tmp_path):
+    """빌드 산출물 디렉토리(dist/.next 등)는 스캔에서 빠진다."""
+    (tmp_path / "app.py").write_text(
+        "def a():\n    return 1\n", encoding="utf-8"
+    )
+    (tmp_path / "dist").mkdir()
+    (tmp_path / "dist" / "bundle.js").write_text(
+        "function b(){return 2}\n", encoding="utf-8"
+    )
+    (tmp_path / ".next").mkdir()
+    (tmp_path / ".next" / "chunk.js").write_text(
+        "function c(){return 3}\n", encoding="utf-8"
+    )
+    reports = build_smell_reports(
+        str(tmp_path), compute_todo_age=False, compute_dup=False
+    )
+    files = [r.file.replace("\\", "/") for r in reports]
+    assert any(f.endswith("app.py") for f in files)
+    assert not any("dist/" in f or ".next/" in f for f in files)
+
+
 def test_build_smell_reports_sorted_by_complexity_desc(tmp_path):
     # 단순 파일 (CCN 1)
     (tmp_path / "simple.py").write_text(
