@@ -44,7 +44,7 @@ export default function Treemap({
   return (
     <div ref={ref} className="treemap-wrap">
       {root && (
-        <svg width={width} height={height} role="img" aria-label="복잡도 히트맵 트리맵">
+        <svg width={width} height={height} role="img" aria-label="Complexity heatmap treemap">
           {/* 디렉토리 라벨 (leaf가 아닌 내부 노드). 너무 좁은 칸은 생략하고,
               긴 이름이 칸을 넘지 않게 헤더 밴드로 클리핑한다. */}
           {root
@@ -94,8 +94,8 @@ export default function Treemap({
                   rx={2}
                 />
                 <title>
-                  {f.path} · 복잡도 {f.complexity} · {f.loc} LOC
-                  {f.askWho ? ` · 물어볼 사람: ${f.askWho}` : ""}
+                  {f.path} · CCN {f.complexity} · {f.loc} LOC
+                  {f.askWho ? ` · ask: ${f.askWho}` : ""}
                 </title>
                 {showLabel && (
                   <>
@@ -128,7 +128,7 @@ export default function Treemap({
           })}
         </svg>
       )}
-      {!root && <p className="empty">표시할 파일이 없습니다.</p>}
+      {!root && <p className="empty">No files to display.</p>}
     </div>
   );
 }

@@ -84,8 +84,8 @@ export function heatColor(complexity: number, max: number): string {
 }
 
 export function riskLabel(risk: string | null): string {
-  if (risk === "high") return "높음";
-  if (risk === "medium") return "보통";
-  if (risk === "low") return "낮음";
+  if (risk === "high") return "High";
+  if (risk === "medium") return "Medium";
+  if (risk === "low") return "Low";
   return "—";
 }

@@ -56,16 +56,16 @@ export default function Home() {
         <div>
           <h1>CodeHeat</h1>
           <p className="tagline">
-            복잡도 히트맵 · 면적=크기(LOC), 색=온도(복잡도). 책임을 묻기보다 해결할
-            수 있는 사람을 찾습니다.
+            Complexity heatmap · area = size (LOC), color = temperature
+            (complexity). Find who can fix it, not who to blame.
           </p>
         </div>
         <div className="stat-row">
-          <Stat label="파일" value={files.length} />
-          <Stat label="최고 온도" value={maxComplexity} />
+          <Stat label="Files" value={files.length} />
+          <Stat label="Max temp" value={maxComplexity} />
           <Stat
-            label="데이터"
-            value={usingSample ? "샘플" : "업로드"}
+            label="Data"
+            value={usingSample ? "Sample" : "Uploaded"}
             small
           />
         </div>
@@ -89,7 +89,7 @@ export default function Home() {
             />
           ) : (
             <p className="empty">
-              smell_report.json을 업로드하면 트리맵이 나타납니다.
+              Upload smell_report.json to see the treemap.
             </p>
           )}
         </div>
@@ -97,8 +97,8 @@ export default function Home() {
       </section>
 
       <footer className="foot">
-        CodeHeat 4단계 출력 레이어 · 정적 대시보드 (백엔드 없음, 데이터는
-        브라우저에서만 처리)
+        CodeHeat output layer · static dashboard (no backend — data is processed
+        only in your browser)
       </footer>
     </main>
   );
@@ -124,9 +124,9 @@ function Stat({
 function Legend({ max }: { max: number }) {
   return (
     <div className="legend">
-      <span className="legend-label">차가움 (CCN 0)</span>
+      <span className="legend-label">Cold (CCN 0)</span>
       <span className="legend-bar" />
-      <span className="legend-label">뜨거움 (CCN {Math.max(max, 10)}+)</span>
+      <span className="legend-label">Hot (CCN {Math.max(max, 10)}+)</span>
     </div>
   );
 }

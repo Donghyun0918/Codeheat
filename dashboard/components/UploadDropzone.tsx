@@ -30,12 +30,12 @@ export default function UploadDropzone({ onReports, loaded }: Props) {
           else if (kind === "ownership") patch.ownership = obj as OwnershipReport;
           else if (kind === "insights") patch.insights = obj as InsightsReport;
           else {
-            notes.push(`${file.name}: 알 수 없는 리포트 형식`);
+            notes.push(`${file.name}: unknown report format`);
             continue;
           }
           notes.push(`${file.name} → ${kind}`);
         } catch {
-          notes.push(`${file.name}: JSON 파싱 실패`);
+          notes.push(`${file.name}: JSON parse failed`);
         }
       }
       if (Object.keys(patch).length) onReports(patch);
@@ -63,12 +63,12 @@ export default function UploadDropzone({ onReports, loaded }: Props) {
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
     >
-      <p className="dz-title">리포트 JSON을 끌어다 놓기</p>
+      <p className="dz-title">Drop report JSON here</p>
       <p className="dz-sub">
-        smell_report · ownership_report · insights_report (여러 개 동시 가능)
+        smell_report · ownership_report · insights_report (multiple at once)
       </p>
       <label className="dz-btn">
-        파일 선택
+        Choose file
         <input
           type="file"
           accept=".json,application/json"
