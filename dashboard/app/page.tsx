@@ -54,10 +54,10 @@ export default function Home() {
     <main className="page">
       <header className="masthead">
         <div>
-          <h1>CodeHeat 🔥</h1>
+          <h1>CodeHeat</h1>
           <p className="tagline">
-            복잡도 히트맵 · 면적=크기(LOC), 색=온도(복잡도). “누가 쌌나”가 아니라
-            “누가 해결할 수 있나”.
+            복잡도 히트맵 · 면적=크기(LOC), 색=온도(복잡도). 책임을 묻기보다 해결할
+            수 있는 사람을 찾습니다.
           </p>
         </div>
         <div className="stat-row">
