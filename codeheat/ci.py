@@ -1,7 +1,7 @@
 """4단계 출력 레이어 — GitHub Action PR 봇.
 
 PR이 건드린 코드 파일들의 **히트맵 온도(max CCN)** 와 그 변화량(base→head 델타)을
-계산해 PR에 코멘트로 단다. 핵심 철학대로 '누가 쌌나(blame)'가 아니라
+계산해 PR에 코멘트로 단다. 핵심 철학대로 책임 추궁(blame)이 아니라
 '누구에게 물어보면 풀리나(매칭)' — 오너십 top 기여자를 "막히면 물어볼 사람"으로
 함께 보여준다.
 
@@ -182,7 +182,7 @@ def build_comment(heats: list[FileHeat]) -> str:
         return (
             "## 🔥 CodeHeat\n\n"
             "이 PR에서 분석할 코드 변경이 없습니다(또는 대상 파일이 비코드입니다).\n\n"
-            f"<sub>CodeHeat · \"누가 쌌나(blame)\"가 아니라 \"누가 해결할 수 있나(매칭)\"</sub>\n"
+            f"<sub>CodeHeat · 책임 추궁(blame)이 아니라 \"누가 해결할 수 있나(매칭)\"</sub>\n"
             f"{MARKER}\n"
         )
 
@@ -213,7 +213,7 @@ def build_comment(heats: list[FileHeat]) -> str:
 
     lines.append("")
     lines.append(
-        "<sub>CodeHeat · \"누가 쌌나(blame)\"가 아니라 \"누가 해결할 수 있나(매칭)\"</sub>"
+        "<sub>CodeHeat · 책임 추궁(blame)이 아니라 \"누가 해결할 수 있나(매칭)\"</sub>"
     )
     lines.append(MARKER)
     return "\n".join(lines) + "\n"

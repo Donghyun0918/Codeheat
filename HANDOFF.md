@@ -1,7 +1,7 @@
 # CodeHeat — 작업 현황 (클로드 코드 인계용)
 
 ## 프로젝트 한 줄 요약
-코드 복잡도 + git 히스토리를 분석해서 "어떤 파일을 먼저 리팩토링해야 하고, 누구에게 물어보면 좋을지"를 알려주는 오픈소스 CLI 툴. 핵심 철학: **"누가 쌌나"(blame)가 아니라 "누가 해결할 수 있나"(매칭)**.
+코드 복잡도 + git 히스토리를 분석해서 "어떤 파일을 먼저 리팩토링해야 하고, 누구에게 물어보면 좋을지"를 알려주는 오픈소스 CLI 툴. 핵심 철학: **책임 추궁(blame)이 아니라 "누가 해결할 수 있나"(매칭)**.
 
 전체 파이프라인 설계는 `code-smell-radar-pipeline.md` 참고.
 
@@ -9,19 +9,17 @@
 
 ## 현재 상태 요약 (2026-06-30 기준)
 
-### 커밋된 것 (git 반영 완료, master, 미푸시)
+### 커밋·푸시 완료 (origin/master = `0b52b4b`, 미푸시 0, working tree 클린)
 - 1단계 정적 분석 · 2단계 오너십 · 3단계 LLM 인사이트 · TODO 토큰 정밀화 · pytest 스위트
 - `fbb1f00 feat: 오너십 기여자 식별을 이메일 키로 정규화` (이메일 합산/`--no-merges`/메모리 분석/churn==0 스킵)
 - `bb77b4f feat: PR 복잡도 온도 봇(4단계 GitHub Action)` (`codeheat/ci.py` + 워크플로 + 테스트)
 - `c196bbe feat: D3 트리맵 대시보드(4단계 4-1)` (`dashboard/`, Next.js+React+D3, 정적 export)
-
-### 미커밋 작업 (working tree, 사용자 지시로 커밋 보류 중)
-- **4단계 4-3 VS Code 확장 신설** — `vscode-extension/` (사이드바 히트맵 트리뷰 + 상태바), `README.md`/`HANDOFF.md` 갱신.
-  - 리포트 JSON 재사용, 워크스페이스 스캔 명령. 자세한 내용은 아래 "완료된 것 — 4단계 4-3" 절.
+- `81a6020 feat: VS Code 확장(4단계 4-3)` (`vscode-extension/`, 사이드바 히트맵 트리뷰 + 상태바)
+- `0b52b4b fix: 대시보드 문구 정리(말장난 제거) + 브랜드 이모지 제거` (`page.tsx`/`layout.tsx`)
 
 > 검증: 백엔드 `pytest` 51 passed. 대시보드 `npm run build` 통과. 확장 `cd vscode-extension && npm install && npm run compile` 통과(타입에러 0) + `reports.js` 샘플 단위검증. CLI 동작 확인.
 
-> **4단계(출력 레이어) 4-1·4-2·4-3 전부 구현 완료.** 남은 것은 백로그(함수 단위 매칭, duplication_ratio, insights 풀데모)뿐.
+> **4단계(출력 레이어) 4-1·4-2·4-3 전부 구현·커밋·푸시 완료.** 남은 것은 백로그(함수 단위 매칭, duplication_ratio, insights 풀데모)뿐.
 
 ---
 
