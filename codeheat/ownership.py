@@ -6,8 +6,11 @@
 
 기여자 점수 = Σ (최근성 가중치 × 변화량 가중치)
   - 최근성 가중치: 오래된 커밋일수록 감쇠 (half-life 1년)
-  - 변화량 가중치: 그 커밋이 파일 복잡도를 얼마나 끌어올렸나(델타).
-    복잡도 델타를 계산할 수 없으면(언어 미지원·git show 실패) churn(변경 라인)으로 대체.
+  - 변화량 가중치: **그 커밋이 실제로 건드린 함수들의 복잡도**(함수 단위 매칭).
+    커밋의 diff 헌크로 바뀐 라인 구간을 구하고, 그 시점 파일을 lizard로 분석해
+    바뀐 라인과 겹치는 함수들의 최대 CCN을 쓴다. 즉 작성자가 만지지도 않은
+    함수의 복잡도로 가중되던 옛 한계(파일 단위 max CCN)를 없앤다.
+    함수 단위로 못 구하면(diff/분석 실패) churn(변경 라인)으로 대체.
 
 동일인 식별: 기여자는 표시 이름(`%aN`)이 아니라 **이메일(`%aE`)** 로 합산한다.
 둘 다 `.mailmap`을 반영하므로, 레포에 mailmap을 두면 한 사람이 여러 이름/메일로
@@ -22,6 +25,7 @@ from __future__ import annotations
 
 import math
 import os
+import re
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -141,6 +145,68 @@ def _max_ccn_at(repo_path: str, commit_hash: str, path: str) -> int | None:
     )
 
 
+# diff 헌크 헤더: "@@ -<old> +<newStart>[,<newCount>] @@". 새 파일(post-image)
+# 라인 번호만 쓰므로 '+' 쪽만 캡처한다.
+_HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
+
+
+def _changed_line_ranges(
+    repo_path: str, commit_hash: str, path: str
+) -> list[tuple[int, int]] | None:
+    """커밋이 이 파일에서 바꾼 '새 파일' 라인 구간 목록. diff 실패 시 None.
+
+    `git show --unified=0`으로 변경 라인만 정확히 받아 헌크 헤더를 파싱한다.
+    순수 삭제(+s,0)는 새 파일에 라인이 없으므로 인접 라인 한 줄로 근사한다.
+    """
+    diff = _run_git(
+        repo_path,
+        ["show", "--format=", "--unified=0", commit_hash, "--", path],
+    )
+    if diff is None:
+        return None
+    ranges: list[tuple[int, int]] = []
+    for line in diff.splitlines():
+        m = _HUNK_RE.match(line)
+        if not m:
+            continue
+        start = int(m.group(1))
+        count = int(m.group(2)) if m.group(2) is not None else 1
+        if count <= 0:
+            ranges.append((start, start))  # 순수 삭제: 인접 라인 근사
+        else:
+            ranges.append((start, start + count - 1))
+    return ranges
+
+
+def _touched_max_ccn(
+    repo_path: str, commit_hash: str, path: str
+) -> int | None:
+    """커밋이 실제로 건드린 함수들 중 최대 CCN (함수 단위 매칭).
+
+    변경 라인 구간을 그 시점 파일의 함수 범위와 교차시켜, 겹치는 함수들의
+    최대 복잡도를 돌려준다. 함수 밖(임포트/상수 등)만 바꿨으면 0, diff/분석
+    실패 시 None(→ churn 폴백).
+    """
+    ranges = _changed_line_ranges(repo_path, commit_hash, path)
+    if not ranges:
+        return None
+    content = _run_git(repo_path, ["show", f"{commit_hash}:{path}"])
+    if content is None:
+        return None
+    try:
+        info = lizard.analyze_file.analyze_source_code(path, content)
+    except Exception:  # noqa: BLE001 - 렉서 미지원/파싱 실패는 폴백(None)으로
+        return None
+
+    touched_max = 0
+    for fn in info.function_list:
+        lo, hi = fn.start_line, fn.end_line
+        # 함수 범위 [lo,hi]가 변경 구간 [rs,re] 중 하나라도 겹치면 '건드림'.
+        if any(not (hi < rs or lo > re_) for rs, re_ in ranges):
+            touched_max = max(touched_max, fn.cyclomatic_complexity)
+    return touched_max
+
+
 def _recency_weight(timestamp: int, now: datetime) -> float:
     age_days = max((now - datetime.fromtimestamp(timestamp, tz=timezone.utc)).days, 0)
     return 0.5 ** (age_days / _RECENCY_HALFLIFE_DAYS)
@@ -164,18 +230,16 @@ def compute_ownership(
     last_ts: dict[str, int] = {}
     display_name: dict[str, str] = {}  # 이메일 키 → 가장 최근 커밋의 표시 이름
 
-    prev_ccn: int = 0  # 시간순 진행하며 직전 시점 복잡도 추적
     for commit in commits:  # 오래된 → 최신
         key = commit.email or commit.author.strip().lower()
-        # 변화량 가중치: 복잡도 델타(급증분)를 우선, 못 구하면 churn 폴백.
-        # churn이 0이면(순수 리네임 등) 내용 변화가 없어 CCN도 그대로이니
+        # 변화량 가중치: 그 커밋이 건드린 함수들의 복잡도(함수 단위)를 우선,
+        # 못 구하면 churn 폴백. churn이 0이면(순수 리네임 등) 내용 변화가 없어
         # 비싼 git show를 건너뛰고 폴백 가중치(=1.0)를 쓴다.
         change_weight: float
         if use_complexity_delta and commit.churn != 0:
-            after = _max_ccn_at(repo_path, commit.hash, commit.path)
-            if after is not None:
-                change_weight = 1.0 + max(0, after - prev_ccn)
-                prev_ccn = after
+            touched = _touched_max_ccn(repo_path, commit.hash, commit.path)
+            if touched is not None:
+                change_weight = 1.0 + touched
             else:
                 change_weight = 1.0 + math.log1p(commit.churn)
         else:

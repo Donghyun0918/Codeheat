@@ -8,10 +8,42 @@ from datetime import datetime, timezone
 from codeheat import ownership
 from codeheat.ownership import (
     _RECENCY_HALFLIFE_DAYS,
+    _changed_line_ranges,
     _recency_weight,
+    _touched_max_ccn,
     compute_ownership,
     get_commit_history,
 )
+
+# 함수 단위 매칭 테스트용 픽스처: simple()=CCN1(라인1-2), hairy()=CCN4(라인4-10).
+_FUNC_SRC = (
+    "def simple():\n"          # 1
+    "    return 1\n"           # 2
+    "\n"                        # 3
+    "def hairy(x):\n"          # 4
+    "    if x > 0:\n"          # 5
+    "        if x > 1:\n"      # 6
+    "            return 2\n"   # 7
+    "    elif x < 0:\n"        # 8
+    "        return -1\n"      # 9
+    "    return 0\n"           # 10
+)
+
+
+def _git_with_diffs(log, diffs, content=_FUNC_SRC):
+    """args에 따라 log / unified diff / 파일 내용을 돌려주는 가짜 _run_git."""
+
+    def fake(repo, args):
+        if args and args[0] == "log":
+            return log
+        if args and args[0] == "show":
+            if "--unified=0" in args:
+                commit_hash = args[args.index("--unified=0") + 1]
+                return diffs.get(commit_hash, "")
+            return content  # "show", "<hash>:<path>"
+        return None
+
+    return fake
 
 
 def test_recency_weight_decays_by_halflife():
@@ -93,6 +125,68 @@ def test_compute_ownership_churn_only_scores(monkeypatch):
     names = [c.name for c in report.top_contributors]
     # 더 많이 변경 + 더 최근인 Alice가 상위
     assert names[0] == "Alice"
+
+
+def test_changed_line_ranges_parses_hunks(monkeypatch):
+    diff = (
+        "@@ -1,2 +1,3 @@\n"      # 추가 → (1,3)
+        " ctx\n+new\n"
+        "@@ -10 +12,0 @@\n"      # 순수 삭제 → (12,12)
+        "-gone\n"
+        "@@ -5,0 +6 @@\n"        # count 생략 → 1 → (6,6)
+        "+added\n"
+    )
+    monkeypatch.setattr(ownership, "_run_git", lambda repo, args: diff)
+    assert _changed_line_ranges("/r", "h", "file.py") == [(1, 3), (12, 12), (6, 6)]
+
+
+def test_changed_line_ranges_none_on_diff_failure(monkeypatch):
+    monkeypatch.setattr(ownership, "_run_git", lambda repo, args: None)
+    assert _changed_line_ranges("/r", "h", "file.py") is None
+
+
+def test_touched_max_ccn_credits_only_touched_function(monkeypatch):
+    """건드린 함수만 가중 — 복잡한 함수 vs 단순 함수 라인을 분리해 확인."""
+    diffs = {
+        "hHairy": "@@ -5,1 +5,3 @@\n+    pass\n",     # hairy() 본문(라인5-7)
+        "hSimple": "@@ -2,1 +2,1 @@\n+    return 1\n",  # simple() 본문(라인2)
+        "hOutside": "@@ -3,0 +3 @@\n+import os\n",      # 함수 밖(라인3)
+    }
+    monkeypatch.setattr(ownership, "_run_git", _git_with_diffs("", diffs))
+    assert _touched_max_ccn("/r", "hHairy", "file.py") == 4
+    assert _touched_max_ccn("/r", "hSimple", "file.py") == 1
+    assert _touched_max_ccn("/r", "hOutside", "file.py") == 0  # 함수 안 건드림
+
+
+def test_touched_max_ccn_none_on_diff_failure(monkeypatch):
+    monkeypatch.setattr(ownership, "_run_git", lambda repo, args: None)
+    assert _touched_max_ccn("/r", "h", "file.py") is None
+
+
+def test_compute_ownership_function_level_attribution(monkeypatch):
+    """복잡한 함수를 만진 Alice가, 단순 함수를 만진 Bob보다 높게 매칭된다.
+
+    옛 파일 단위 max CCN이면 둘 다 같은 파일 max(4)로 가중돼 차이가 안 났다.
+    함수 단위 매칭에선 실제 만진 함수 복잡도로 갈린다.
+    """
+    log = (
+        "hAlice|Alice|alice@example.com|1500000000\n"
+        "3\t0\tfile.py\n"
+        "hBob|Bob|bob@example.com|1500000000\n"  # 같은 시각 → 최근성 동일
+        "3\t0\tfile.py\n"
+    )
+    diffs = {
+        "hAlice": "@@ -5,1 +5,3 @@\n+    pass\n",       # hairy()
+        "hBob": "@@ -2,1 +2,1 @@\n+    return 1\n",       # simple()
+    }
+    monkeypatch.setattr(ownership, "_run_git", _git_with_diffs(log, diffs))
+    report = compute_ownership(
+        "/repo", "/repo/file.py", top_n=2, use_complexity_delta=True
+    )
+    names = [c.name for c in report.top_contributors]
+    assert names[0] == "Alice"  # 복잡한 함수를 만진 사람이 상위
+    scores = {c.name: c.score for c in report.top_contributors}
+    assert scores["Alice"] > scores["Bob"]
 
 
 def test_compute_ownership_merges_same_email(monkeypatch):

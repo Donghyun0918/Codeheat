@@ -39,7 +39,10 @@ export default function FileDetail({ file, maxComplexity }: Props) {
           <Metric label="커밋 수" value={file.totalCommits} />
         )}
         {file.duplicationRatio > 0 && (
-          <Metric label="중복률" value={file.duplicationRatio} />
+          <Metric
+            label="중복률"
+            value={`${Math.round(file.duplicationRatio * 100)}%`}
+          />
         )}
       </div>
 
@@ -103,7 +106,7 @@ export default function FileDetail({ file, maxComplexity }: Props) {
   );
 }
 
-function Metric({ label, value }: { label: string; value: number }) {
+function Metric({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="metric">
       <span className="metric-val">{value}</span>

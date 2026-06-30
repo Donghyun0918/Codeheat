@@ -17,9 +17,9 @@
 - `81a6020 feat: VS Code 확장(4단계 4-3)` (`vscode-extension/`, 사이드바 히트맵 트리뷰 + 상태바)
 - `0b52b4b fix: 대시보드 문구 정리(말장난 제거) + 브랜드 이모지 제거` (`page.tsx`/`layout.tsx`)
 
-> 검증: 백엔드 `pytest` 51 passed. 대시보드 `npm run build` 통과. 확장 `cd vscode-extension && npm install && npm run compile` 통과(타입에러 0) + `reports.js` 샘플 단위검증. CLI 동작 확인.
+> 검증: 백엔드 `pytest` **66 passed**(중복률·함수단위매칭 테스트 +15 포함). 대시보드 `npm run build` 통과. 확장 `cd vscode-extension && npm install && npm run compile` 통과(타입에러 0) + `reports.js` 샘플 단위검증. CLI 동작 확인.
 
-> **4단계(출력 레이어) 4-1·4-2·4-3 전부 구현·커밋·푸시 완료.** 남은 것은 백로그(함수 단위 매칭, duplication_ratio, insights 풀데모)뿐.
+> **4단계(출력 레이어) 4-1·4-2·4-3 전부 구현·커밋·푸시 완료.** 직전 백로그였던 **함수 단위 복잡도 매칭**과 **`duplication_ratio` 구현**도 완료(아래 1·2단계 절). 남은 것은 insights 풀데모 등 소규모 백로그뿐.
 
 ---
 
@@ -75,7 +75,7 @@ python -m codeheat.cli scan <repo_path> --no-todo-age   # git log 생략(속도)
 - Pygments 미설치·렉서 미존재 시 라인-앵커 정규식 폴백(`_iter_comment_lines`). 폴백도 `_mask_strings`로 한 줄짜리 문자열 리터럴을 마스킹해 가짜 주석을 거름. 잔여 한계는 폴백 경로의 *여러 줄* 문자열뿐.
 - `_iter_comment_lines`는 (라인번호, 매칭용텍스트, 표시용텍스트) 3-튜플을 산출. 폴백에선 매칭=마스킹본, 표시=원본 라인이라 리포트 텍스트가 깨지지 않음.
 - 셀프 스캔 0 오탐 확인. 검증: `tests/test_static_scan.py` (문자열/산문/코드 음성 + 주석/다언어/폴백+마스킹/pygments미설치 양성, `_mask_strings` 단위).
-- `duplication_ratio` 미구현 (2차 jscpd 예정)
+- `duplication_ratio` **구현 완료**(`duplication.py`): 파일 내부 중복률 0~1. jscpd(Node) 대신 **이미 의존성인 Pygments로 순수 파이썬** 구현 — 토큰 정규화(식별자→N/숫자→0/문자열→S)로 type-2 클론(변수명만 바꾼 복붙)까지 잡고, 주석/공백은 제외. 연속 4줄(논리 라인) 블록이 2회+ 등장하면 그 라인들을 중복으로 카운트. Pygments 미설치/렉서 미존재 시 공백 정규화 라인 폴백(type-1만). `scan`에 실리며 `--no-duplication`로 생략 가능. 대시보드 FileDetail이 `%`로 표시.
 - `git log -S`는 TODO 텍스트 앞 40자만 사용 — 너무 일반적 문구면 오매칭 가능
 
 ---
@@ -98,7 +98,7 @@ python -m codeheat.cli scan <repo_path> --no-todo-age   # git log 생략(속도)
 2. `--from-report` 입력은 1단계가 이미 복잡도 내림차순 정렬해둔 순서를 그대로 보존(우선순위 승계)
 3. LLM 레이어 제약대로 `FileOwnershipReport`도 이름/점수/메타데이터만 담고 코드 본문은 안 넘김
 4. **헤더 파싱은 고정 위치 기준**: 이름에 `|`가 들어갈 수 있으니 `hash=처음`, `email=끝-1`, `ts=끝`으로 자르고 가운데를 이름으로 되붙인다.
-5. 남은 한계: 복잡도 델타가 파일 단위 max CCN이라 그 작성자가 만진 함수가 아니어도 가중됨(함수 단위 매칭은 향후). git show는 커밋마다 1회라 초대형 히스토리는 여전히 느릴 수 있음(`--churn-only`/`--limit`로 완화).
+5. **함수 단위 매칭 적용**(옛 한계 해소): 변화량 가중치는 이제 그 커밋이 *실제로 건드린 함수들*의 최대 CCN이다. `git show --unified=0`로 변경 라인 구간을 구하고(`_changed_line_ranges`, 헌크 헤더 파싱) 그 시점 파일의 함수 범위와 교차시켜 만진 함수만 가중한다(`_touched_max_ccn`). 함수 밖(임포트/상수)만 바꿨으면 0, diff/분석 실패 시 churn 폴백. 파일 단위 max CCN(`_max_ccn_at`)은 PR봇(`ci.py`)에서만 계속 사용. 남은 비용 한계: git show가 커밋마다 1~2회라 초대형 히스토리는 느릴 수 있음(`--churn-only`/`--limit`로 완화).
 
 ---
 
@@ -168,9 +168,14 @@ python -m codeheat.cli scan <repo_path> --no-todo-age   # git log 생략(속도)
 
 ## 다음 할 일
 
+### 완료(직전 백로그)
+- **함수 단위 복잡도 매칭** — 2단계 오너십에 적용 완료(`_touched_max_ccn`/`_changed_line_ranges`). 위 "2단계" 절 참고.
+- **`duplication_ratio` 구현** — `duplication.py`(Pygments 토큰 기반, jscpd 미사용). 위 "1단계" 절 참고.
+
 ### 백로그
 - insights 업로드까지 합친 대시보드 풀 데모(현재 샘플엔 insights 미포함; LLM 호출 필요해 번들 제외).
-- 함수 단위 복잡도 매칭(2단계/PR봇 공통 한계), `duplication_ratio` 구현(jscpd).
+- 함수 단위 매칭을 PR봇(`ci.py`)에도 확대(현재 PR봇은 파일 단위 max CCN 유지).
+- `scan`이 빌드 산출물(`dashboard/.next`, `out/`, `dist/`)까지 훑음 — `EXCLUDE_DIRS`에 추가 검토(현재 node_modules/.git/venv만 제외).
 
 ---
 

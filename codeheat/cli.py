@@ -13,7 +13,9 @@ from .static_scan import build_smell_reports
 
 def _cmd_scan(args: argparse.Namespace) -> int:
     reports = build_smell_reports(
-        args.repo_path, compute_todo_age=not args.no_todo_age
+        args.repo_path,
+        compute_todo_age=not args.no_todo_age,
+        compute_dup=not args.no_duplication,
     )
 
     payload = {
@@ -143,6 +145,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-todo-age",
         action="store_true",
         help="git log 기반 TODO 나이 계산 생략 (속도 우선)",
+    )
+    scan.add_argument(
+        "--no-duplication",
+        action="store_true",
+        help="중복률(duplication_ratio) 계산 생략 (속도 우선)",
     )
     scan.set_defaults(func=_cmd_scan)
 

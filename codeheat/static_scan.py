@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 import lizard
 
+from .duplication import compute_duplication
 from .models import FileSmellReport, TodoItem
 
 # 스캔에서 제외할 디렉토리. lizard.analyze의 exclude_pattern은 glob이므로
@@ -194,9 +195,11 @@ def get_todo_age_days(
 
 
 def build_smell_reports(
-    repo_path: str, compute_todo_age: bool = True
+    repo_path: str,
+    compute_todo_age: bool = True,
+    compute_dup: bool = True,
 ) -> list[FileSmellReport]:
-    """복잡도 + TODO를 묶어 복잡도 내림차순 정렬된 리포트 리스트 반환."""
+    """복잡도 + TODO + 중복률을 묶어 복잡도 내림차순 정렬된 리포트 리스트 반환."""
     complexity_map = scan_complexity(repo_path)
     reports: list[FileSmellReport] = []
 
@@ -213,6 +216,8 @@ def build_smell_reports(
                     repo_path, file_path, todo.text
                 )
 
+        dup = compute_duplication(file_path) if compute_dup else 0.0
+
         reports.append(
             FileSmellReport(
                 file=os.path.relpath(file_path, repo_path),
@@ -221,6 +226,7 @@ def build_smell_reports(
                 function_count=len(functions),
                 loc=loc,
                 todos=todos,
+                duplication_ratio=dup,
             )
         )
 

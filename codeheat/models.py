@@ -37,7 +37,7 @@ class FileSmellReport:
     function_count: int
     loc: int
     todos: list[TodoItem] = field(default_factory=list)
-    duplication_ratio: float = 0.0  # 2단계(jscpd 등) 연동 전까지 비워둠
+    duplication_ratio: float = 0.0  # 파일 내부 중복률 0~1 (duplication.py, Pygments 토큰 기반)
 
     @property
     def oldest_todo_days(self) -> Optional[int]:
